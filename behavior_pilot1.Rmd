@@ -1,0 +1,39 @@
+---
+title: "behavior_pilot1"
+author: "Wanjia Guo"
+date: "9/29/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(fs)
+library(purrr)
+library(tidyverse)
+
+# Loading behavioral data
+sub_dir = dir_ls(here::here("../study_design/behavioral_code/Monstera_testingroom/data/"))
+prescan_behav <- map(sub_dir, dir_ls, glob = '*prescan*_behav*.csv') %>% unlist()
+scan_behav <- map(sub_dir, dir_ls, regexp = '(.*)_scan\\d_behav_.*') %>% unlist()
+
+prescan_batch <- map_dfr(prescan_behav, read_csv)
+scan_batch <- map_dfr(scan_behav, read_csv)
+```
+
+
+# Prescan analysis
+
+```{r}
+prescan_batch = prescan_batch %>% mutate(
+  nquestion = rep(c(1, 2, 3), times = nrow(prescan_batch)/3),
+  correct = ifelse(resp_obj == destination, 1, 0),
+  confidence = ifelse(conf_resp == 6, 1, 0))
+
+```
+
+# Scan analysis
+
+```{r}
+
+```
+
+
