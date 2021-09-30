@@ -17,8 +17,11 @@ scan_behav <- map(sub_dir, dir_ls, regexp = '(.*)_scan\\d_behav_.*') %>% unlist(
 
 prescan_batch <- map_dfr(prescan_behav, read_csv)
 scan_batch <- map_dfr(scan_behav, read_csv)
+
+
 ```
 
+## n = `r nrow(prescan_batch)/24`
 
 # Prescan analysis
 
@@ -28,11 +31,24 @@ prescan_batch = prescan_batch %>% mutate(
   correct = ifelse(resp_obj == destination, 1, 0),
   confidence = ifelse(conf_resp == 6, 1, 0))
 
+prescan_batch %>% 
+  group_by(round, nquestion) %>% 
+  summarise(m = mean(correct),
+            conf = mean(confidence))
+
 ```
 
 # Scan analysis
 
 ```{r}
+
+scan_batch = scan_batch %>% mutate(
+  correct = ifelse(post_first_resp_obj == destination, 1, 0))
+
+scan_batch %>% group_by(valid) %>% 
+  summarise(m_correct = mean(correct)) 
+
+scan_batch %>% 
 
 ```
 
