@@ -69,7 +69,6 @@ Percentage of correct for the question after seeing the whole route, separating 
 nest_scan_batch = scan_batch %>% group_by(destination, route) %>% 
   filter(i_pic != -999) %>% 
   mutate(destination = as.factor(destination)) %>% 
-  arrange(destination) %>% 
   nest()
 
 
@@ -80,7 +79,8 @@ nest_scan_fig = nest_scan_batch %>%
       labs(title = ..2,
            subtitle = ..3,
            x = 'Index')+
-      theme_minimal()}))
+      theme_minimal()})) %>% 
+  arrange(route)
 
 ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
                   nest_scan_fig$nest_plot[[2]],
