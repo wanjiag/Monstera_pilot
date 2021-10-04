@@ -100,3 +100,37 @@ ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
 
 The index is the picture when participant pressed button to indicate they are SURE of the destination. One distribution is drawn for each destination, colored by different participant.
 (1-25: Same; 26-75: Overlapping; 76-100: Non-overlapping).
+
+```{r fig.width=16, fig.height=8}
+nest_scan_batch = scan_batch %>% 
+  group_by(destination, route) %>% 
+  filter(i_pic != -999) %>% 
+  mutate(destination = as.factor(destination)) %>% 
+  nest()
+
+
+nest_scan_fig = nest_scan_batch %>% 
+  mutate(nest_plot = pmap(list(data, destination, route),~{
+    ggplot(..1, aes(x=i_pic, fill = valid)) + 
+      geom_histogram(bins = 20)+
+      labs(title = ..2,
+           subtitle = ..3,
+           x = 'Index')+
+      theme_minimal()})) %>% 
+  arrange(route)
+
+ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
+                  nest_scan_fig$nest_plot[[2]],
+                  nest_scan_fig$nest_plot[[3]],
+                  nest_scan_fig$nest_plot[[4]],
+                  nest_scan_fig$nest_plot[[5]],
+                  nest_scan_fig$nest_plot[[6]],
+                  nest_scan_fig$nest_plot[[7]],
+                  nest_scan_fig$nest_plot[[8]],
+                  ncol = 4, nrow = 2,
+                  common.legend = TRUE,
+                  legend = 'bottom')
+
+```
+
+
