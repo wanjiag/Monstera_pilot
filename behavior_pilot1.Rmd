@@ -17,14 +17,17 @@ library(fs)
 library(purrr)
 library(tidyverse)
 
+converting_read <- function(curr_path){
+  read_csv(curr_path) %>% mutate(sub = as.character(sub))
+}
+
 # Loading behavioral data
 sub_dir = dir_ls(here::here("../study_design/behavioral_code/Monstera_testingroom/data/"))
 prescan_behav <- map(sub_dir, dir_ls, glob = '*prescan*_behav*.csv') %>% unlist()
 scan_behav <- map(sub_dir, dir_ls, regexp = '(.*)_scan\\d_behav_.*') %>% unlist()
 
-prescan_batch <- map_dfr(prescan_behav, read_csv)
-scan_batch <- map_dfr(scan_behav, read_csv)
-
+prescan_batch <- map_dfr(prescan_behav, converting_read)
+scan_batch <- map_dfr(scan_behav, converting_read)
 
 ```
 
