@@ -7,18 +7,26 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r echo = FALSE}
+```{r include = FALSE}
 knitr::opts_chunk$set(echo=FALSE)
-```
-
-```{r setup, include=FALSE}
 library(gt)
 library(fs)
 library(purrr)
 library(tidyverse)
+theme_set(theme_minimal(15))
+```
+
+```{r setup, include=FALSE}
 
 converting_read <- function(curr_path){
+  print(curr_path)
   read_csv(curr_path) %>% mutate(sub = as.character(sub))
+}
+
+converting_read2 <- function(curr_path){
+  print(curr_path)
+  read_csv(curr_path) %>% mutate(sub = as.character(sub),
+                                 post_first_resp_obj = as.character(post_first_resp_obj))
 }
 
 # Loading behavioral data
@@ -27,7 +35,7 @@ prescan_behav <- map(sub_dir, dir_ls, glob = '*prescan*_behav*.csv') %>% unlist(
 scan_behav <- map(sub_dir, dir_ls, regexp = '(.*)_scan\\d_behav_.*') %>% unlist()
 
 prescan_batch <- map_dfr(prescan_behav, converting_read)
-scan_batch <- map_dfr(scan_behav, converting_read)
+scan_batch <- map_dfr(scan_behav, converting_read2)
 
 ```
 
@@ -41,39 +49,69 @@ prescan_batch = prescan_batch %>% mutate(
   correct = ifelse(resp_obj == destination, 1, 0),
   confidence = ifelse(conf_resp == 6, 1, 0))
 
-prescan_batch %>% 
+curr_plot = prescan_batch %>% 
   mutate(round_text = paste0('Round',round)) %>% 
   group_by(round_text, nquestion) %>% 
   summarise(m = mean(correct),
-            conf = mean(confidence)) %>% 
-  gt() %>% cols_align(align = 'left')
+            se = sd(correct)/sqrt(n()),
+            conf = mean(confidence),
+            conf_se = sd(confidence)/sqrt(n()))
+
+
+ggplot(curr_plot, aes(x = nquestion, y = m)) + 
+  geom_histogram(stat = "identity")+
+  geom_errorbar(aes(ymin=m-se, ymax=m+se), color="red", width=0.1, size=0.5)+
+  facet_wrap(~round_text)+
+  labs(title = 'Accuracy for pre-scan')
+
+  
+ggplot(curr_plot, aes(x = nquestion, y = conf)) + 
+  geom_histogram(stat = "identity")+
+  geom_errorbar(aes(ymin=conf-conf_se, ymax=conf+conf_se), color="red", width=0.1, size=0.5)+
+  facet_wrap(~round_text)+
+  labs(title = 'Confidence response for pre-scan')
+  #gt() %>% cols_align(align = 'left')
 ```
 
 Participant were instructed to answer the expected destination for 3 times during the route: once at Same, once at Overlapping, and once at non-overlapping. They also indicated their confidence towards the choice (sure vs. unsure). Round 1 and 2 have same accuracy during the same route, but accuracy is increase during round 2 for overlapping and non-overlapping segment.
 
 # Scan analysis
 
+Number of trials with no answer across all participant is `r scan_batch %>% filter(i_pic == -999) %>% summarise(n=n()) %>% .$n`
 
-```{r}
+```{r,fig.width=6, fig.height=4}
 
 scan_batch = scan_batch %>% mutate(
   correct = ifelse(post_first_resp_obj == destination, 1, 0))
 
-scan_batch %>% group_by(valid) %>% 
-  summarise(m_correct = mean(correct)) %>% 
-  gt() %>% 
-  cols_align(align = 'left') %>% 
-  cols_label(valid = "", m_correct = "% correct")
-```
-Percentage of correct for the question after seeing the whole route, separating by valid vs. invalid cue. Participants were instructed to indicate where they though they were going when pressing the button in the middle of the route. The answer for invalid is very sligly lower than valid.
+curr_plot = scan_batch %>% group_by(valid) %>% 
+  summarise(m_correct = mean(correct),
+            se = sd(correct)/sqrt(n()))
 
+ggplot(curr_plot, aes(x = valid, y = m_correct)) + 
+  geom_histogram(stat = "identity")+
+  geom_errorbar(aes(ymin=m_correct-se, ymax=m_correct+se), color="red", width=0.1, size=0.5)+
+  labs(title = 'Post-route accuracy for scan phase',
+       x = element_blank())
+  #gt() %>% cols_align(align = 'left')
+```
+
+
+```{r,include=FALSE}
+  #gt() %>% 
+  #cols_align(align = 'left') %>% 
+  #cols_label(valid = "", m_correct = "% correct")
+```
+
+Percentage of correct for the question after seeing the whole route, separating by valid vs. invalid cue. Participants were instructed to indicate where they though they were going when pressing the button in the middle of the route. The answer for invalid is very slightly lower than valid.
+
+### Correct vs. Incorrect 
 
 ```{r fig.width=16, fig.height=8}
-nest_scan_batch = scan_batch %>% group_by(destination, route) %>% 
+nest_scan_batch = scan_batch %>% group_by(destination, route) %>%
   filter(i_pic != -999) %>% 
   mutate(destination = as.factor(destination)) %>% 
   nest()
-
 
 nest_scan_fig = nest_scan_batch %>% 
   mutate(nest_plot = pmap(list(data, destination, route),~{
@@ -101,13 +139,40 @@ ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
 The index is the picture when participant pressed button to indicate they are SURE of the destination. One distribution is drawn for each destination, colored by different participant.
 (1-25: Same; 26-75: Overlapping; 76-100: Non-overlapping).
 
+It seems like within each subject, the response is quite consistent for where or when they pressed the button. 
+
+*Participant11: pressing '6' prior to picture 25 for 52 times out of 96 times! Probably should be excluded?*
+
+```{r fig.width=6, fig.height=4}
+curr_plot = scan_batch %>% 
+  filter(i_pic != -999) %>% 
+  group_by(sub, correct) %>% 
+  summarise(m_idx = mean(i_pic),
+            se = sd(i_pic)/sqrt(n())) %>% 
+  group_by(correct) %>% 
+  summarise(total_idx = mean(m_idx),
+            se = sd(m_idx)/sqrt(n()),
+            n = n()) %>% 
+  mutate(correct = as.factor(correct))
+
+ggplot(curr_plot, aes(x = correct, 
+                      y = total_idx)) + 
+  geom_histogram(stat = "identity")+
+  geom_errorbar(aes(ymin=total_idx-se, ymax=total_idx+se), color="red", width=0.1, size=0.5)+
+  labs(title = 'Average pic index at first response',
+       y = 'picture index')
+```
+
+
+### Valid vs. Invalid 
+
 ```{r fig.width=16, fig.height=8}
+
 nest_scan_batch = scan_batch %>% 
   group_by(destination, route) %>% 
   filter(i_pic != -999) %>% 
   mutate(destination = as.factor(destination)) %>% 
   nest()
-
 
 nest_scan_fig = nest_scan_batch %>% 
   mutate(nest_plot = pmap(list(data, destination, route),~{
@@ -130,7 +195,52 @@ ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
                   ncol = 4, nrow = 2,
                   common.legend = TRUE,
                   legend = 'bottom')
-
 ```
 
+
+```{r fig.width=6, fig.height=4}
+
+curr_plot = scan_batch %>% 
+  filter(i_pic != -999) %>% 
+  group_by(sub, valid) %>% 
+  summarise(m_idx = mean(i_pic)) %>% 
+  group_by(valid) %>% 
+  summarise(total_idx = mean(m_idx),
+            se = sd(m_idx)/sqrt(n()),
+            n = n())
+
+ggplot(curr_plot, aes(x = valid, 
+                      y = total_idx)) + 
+  geom_histogram(stat = "identity")+
+  geom_errorbar(aes(ymin=total_idx-se, ymax=total_idx+se), color="red", width=0.1, size=0.5)+
+  labs(title = 'Average pic index at first response',
+       y = 'picture index')
+```
+
+There doesn't seem to be a significant difference between participant response in valid vs. invalid trials.
+
+
+### Correct & Valid
+
+```{r}
+curr_plot = scan_batch %>% 
+  filter(i_pic != -999) %>% 
+  group_by(sub, valid, correct) %>% 
+  summarise(m_idx = mean(i_pic)) %>% 
+  group_by(valid, correct) %>% 
+  summarise(total_idx = mean(m_idx),
+            se = sd(m_idx)/sqrt(n()),
+            n = n()) %>% 
+  mutate(correct = factor(correct),
+         correct_label = ifelse(correct == 1, 'correct', 'incorrect'))
+
+ggplot(curr_plot, aes(x = valid, 
+                      y = total_idx)) + 
+  geom_histogram(stat = "identity")+
+  geom_errorbar(aes(ymin=total_idx-se, ymax=total_idx+se), color="red", width=0.1, size=0.5)+
+  labs(title = 'Average pic index at first response',
+       y = 'picture index') + 
+  facet_wrap(~correct_label)
+
+```
 
