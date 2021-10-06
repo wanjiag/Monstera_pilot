@@ -43,72 +43,69 @@ scan_batch <- map_dfr(scan_behav, converting_read2)
 
 # Prescan analysis
 
+Participant were instructed to answer the expected destination for 3 times during the route: once at Same, once at Overlapping, and once at non-overlapping. They also indicated their confidence towards the choice (sure vs. unsure).
+
 ```{r}
 prescan_batch = prescan_batch %>% mutate(
   nquestion = rep(c(1, 2, 3), times = nrow(prescan_batch)/3),
   correct = ifelse(resp_obj == destination, 1, 0),
   confidence = ifelse(conf_resp == 6, 1, 0))
 
-curr_plot = prescan_batch %>% 
+sub_plot = prescan_batch %>% 
   mutate(round_text = paste0('Round',round)) %>% 
+  group_by(sub, nquestion, round_text) %>% 
+  summarise(m = mean(correct), conf = mean(confidence)) 
+
+curr_plot = sub_plot %>%
   group_by(round_text, nquestion) %>% 
-  summarise(m = mean(correct),
-            se = sd(correct)/sqrt(n()),
-            conf = mean(confidence),
-            conf_se = sd(confidence)/sqrt(n()))
+  summarise(mean = mean(m),
+            se = sd(m)/sqrt(n()),
+            mean_conf = mean(conf),
+            conf_se = sd(conf)/sqrt(n()))
 
 
-ggplot(curr_plot, aes(x = nquestion, y = m)) + 
+ggplot(curr_plot, aes(x = nquestion, y = mean)) + 
   geom_histogram(stat = "identity")+
-  geom_errorbar(aes(ymin=m-se, ymax=m+se), color="red", width=0.1, size=0.5)+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), color="red", width=0.1, size=0.5)+
   facet_wrap(~round_text)+
   labs(title = 'Accuracy for pre-scan')
-
   
-ggplot(curr_plot, aes(x = nquestion, y = conf)) + 
+ggplot(curr_plot, aes(x = nquestion, y = mean_conf)) + 
   geom_histogram(stat = "identity")+
-  geom_errorbar(aes(ymin=conf-conf_se, ymax=conf+conf_se), color="red", width=0.1, size=0.5)+
+  geom_errorbar(aes(ymin=mean_conf-conf_se, ymax=mean_conf+conf_se), color="red", width=0.1, size=0.5)+
   facet_wrap(~round_text)+
   labs(title = 'Confidence response for pre-scan')
   #gt() %>% cols_align(align = 'left')
 ```
 
-Participant were instructed to answer the expected destination for 3 times during the route: once at Same, once at Overlapping, and once at non-overlapping. They also indicated their confidence towards the choice (sure vs. unsure). Round 1 and 2 have same accuracy during the same route, but accuracy is increase during round 2 for overlapping and non-overlapping segment.
-
 # Scan analysis
+
+### Quality check
 
 Number of trials with no answer across all participant is `r scan_batch %>% filter(i_pic == -999) %>% summarise(n=n()) %>% .$n`
 
+Table with top 3 participants with most missing data -->
+Excluding subject 16.
+
 ```{r,fig.width=6, fig.height=4}
 
-scan_batch = scan_batch %>% mutate(
-  correct = ifelse(post_first_resp_obj == destination, 1, 0))
+scan_batch %>% filter(i_pic == -999) %>% group_by(sub) %>% summarise(n=n()) %>% arrange(desc(n)) %>% head(3) %>% gt()
 
-curr_plot = scan_batch %>% group_by(valid) %>% 
-  summarise(m_correct = mean(correct),
-            se = sd(correct)/sqrt(n()))
+scan_batch = scan_batch %>% filter(sub != 16) %>% 
+  mutate(correct = ifelse(post_first_resp_obj == destination, 1, 0))
 
-ggplot(curr_plot, aes(x = valid, y = m_correct)) + 
-  geom_histogram(stat = "identity")+
-  geom_errorbar(aes(ymin=m_correct-se, ymax=m_correct+se), color="red", width=0.1, size=0.5)+
-  labs(title = 'Post-route accuracy for scan phase',
-       x = element_blank())
-  #gt() %>% cols_align(align = 'left')
 ```
 
+For the following figure, the index is the picture when participant pressed button to indicate they are SURE of the destination. One distribution is drawn for each destination, colored by different participant.
+(1-25: Same; 26-75: Overlapping; 76-100: Non-overlapping).
 
-```{r,include=FALSE}
-  #gt() %>% 
-  #cols_align(align = 'left') %>% 
-  #cols_label(valid = "", m_correct = "% correct")
-```
+It seems like within each subject, the response is quite consistent for where or when they pressed the button. 
 
-Percentage of correct for the question after seeing the whole route, separating by valid vs. invalid cue. Participants were instructed to indicate where they though they were going when pressing the button in the middle of the route. The answer for invalid is very slightly lower than valid.
-
-### Correct vs. Incorrect 
+*Participant11: pressing '6' prior to picture 25 for 52 times out of 96 times! Probably should also be excluded?*
 
 ```{r fig.width=16, fig.height=8}
-nest_scan_batch = scan_batch %>% group_by(destination, route) %>%
+nest_scan_batch = scan_batch %>% 
+  group_by(destination, route) %>%
   filter(i_pic != -999) %>% 
   mutate(destination = as.factor(destination)) %>% 
   nest()
@@ -136,20 +133,60 @@ ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
                   legend = 'bottom')
 ```
 
-The index is the picture when participant pressed button to indicate they are SURE of the destination. One distribution is drawn for each destination, colored by different participant.
-(1-25: Same; 26-75: Overlapping; 76-100: Non-overlapping).
+*I also found some subjects with response at picture 1, and later we received another response. In that case, maybe we should use the later response instead?*
 
-It seems like within each subject, the response is quite consistent for where or when they pressed the button. 
+```{r}
 
-*Participant11: pressing '6' prior to picture 25 for 52 times out of 96 times! Probably should be excluded?*
+curr_plot = scan_batch %>% 
+  filter(i_pic != -999) %>% 
+  mutate(stage = ifelse(i_pic <= 25, 'same',
+                        ifelse(i_pic >= 75, 'non-overlap', 'overlap'))) %>%
+  mutate(stage = factor(stage, levels = c('same', 
+                                             'overlap', 
+                                             'non-overlap'))) %>% 
+  count(stage, sub) %>% 
+  group_by(stage) %>% 
+  summarise(m = mean(n),
+            se = sd(n)/sqrt(n()),
+            num = n())
+
+ggplot(curr_plot, aes(x = stage, y = m)) + 
+  geom_histogram(stat = 'identity') + 
+  geom_errorbar(aes(ymin=m-se, ymax=m+se), color="red", width=0.1, size=0.5)+
+  labs(title = 'Average number of first response for each stage',
+       y = 'Average number of first response',
+       caption = paste0('# of subjects included for each part\nsame:', 
+                        curr_plot$num[1],
+                        '\noverlapping:',
+                        curr_plot$num[2],
+                        '\nnon-overlapping:',
+                        curr_plot$num[3]))
+
+```
+
+### Correct vs. Incorrect
+
+Most subjects have very little incorrect trials and there doesnt seem to be a difference in the timing when they pressed the button between the correct vs. incorrect.
 
 ```{r fig.width=6, fig.height=4}
-curr_plot = scan_batch %>% 
+sub_plot = scan_batch %>% 
   filter(i_pic != -999) %>% 
   group_by(sub, correct) %>% 
   summarise(m_idx = mean(i_pic),
-            se = sd(i_pic)/sqrt(n())) %>% 
-  group_by(correct) %>% 
+            n_resp = n())
+
+curr_plot =  sub_plot %>% 
+  select(-m_idx) %>% 
+  pivot_wider(names_from = correct, values_from = n_resp)
+
+ggplot(sub_plot %>% filter(correct == 0), 
+       aes(x = n_resp)) + 
+  geom_histogram()+
+  labs(title = 'Number of incorrect response for post-route choice',
+       y = '# of participant',
+       x = '# of incorrect')
+
+curr_plot =  sub_plot %>%  group_by(correct) %>% 
   summarise(total_idx = mean(m_idx),
             se = sd(m_idx)/sqrt(n()),
             n = n()) %>% 
@@ -221,6 +258,32 @@ There doesn't seem to be a significant difference between participant response i
 
 
 ### Correct & Valid
+
+```{r}
+curr_plot = scan_batch %>% 
+  group_by(valid, sub) %>% 
+  summarise(m = mean(correct)) %>% 
+  group_by(valid) %>% 
+  summarise(m_correct = mean(m),
+            se = sd(m)/sqrt(n()))
+
+ggplot(curr_plot, aes(x = valid, y = m_correct)) + 
+  geom_histogram(stat = "identity")+
+  geom_errorbar(aes(ymin=m_correct-se, ymax=m_correct+se), color="red", width=0.1, size=0.5)+
+  labs(title = 'Post-route accuracy for scan phase',
+       x = element_blank())
+  #gt() %>% cols_align(align = 'left')
+```
+
+
+```{r,include=FALSE}
+  #gt() %>% 
+  #cols_align(align = 'left') %>% 
+  #cols_label(valid = "", m_correct = "% correct")
+```
+
+Percentage of correct for the question after seeing the whole route, separating by valid vs. invalid cue. Participants were instructed to indicate where they though they were going when pressing the button in the middle of the route. The answer for invalid is very slightly lower than valid.
+
 
 ```{r}
 curr_plot = scan_batch %>% 
