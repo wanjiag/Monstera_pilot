@@ -1,8 +1,12 @@
 ---
-title: "behavior_pilot1"
+title: "Behavior Pilot"
 author: "Wanjia Guo"
 date: "9/29/2021"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: journal
 editor_options: 
   chunk_output_type: console
 ---
