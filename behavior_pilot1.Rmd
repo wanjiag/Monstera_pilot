@@ -12,7 +12,7 @@ editor_options:
 ---
 
 ```{r include = FALSE}
-knitr::opts_chunk$set(echo=FALSE)
+knitr::opts_chunk$set(echo=FALSE, warning = FALSE)
 library(gt)
 library(fs)
 library(purrr)
@@ -24,7 +24,8 @@ theme_set(theme_minimal(15))
 
 converting_read <- function(curr_path){
   print(curr_path)
-  read_csv(curr_path) %>% mutate(sub = as.character(sub))
+  read_csv(curr_path) %>% mutate(sub = as.character(sub),
+                                 resp_obj = as.character(resp_obj))
 }
 
 converting_read2 <- function(curr_path){
@@ -49,23 +50,40 @@ scan_batch <- map_dfr(scan_behav, converting_read2)
 
 Participant were instructed to answer the expected destination for 3 times during the route: once at Same, once at Overlapping, and once at non-overlapping. They also indicated their confidence towards the choice (sure vs. unsure).
 
+There is no main effect of rounds.
+
+*excluding subject 25 with 0 accuracy (didn't answer any questions). *
+*Should we also exclude subjects with around chance level accuracy?*
+
 ```{r}
-prescan_batch = prescan_batch %>% mutate(
+prescan_batch = prescan_batch %>% 
+  mutate(
   nquestion = rep(c(1, 2, 3), times = nrow(prescan_batch)/3),
   correct = ifelse(resp_obj == destination, 1, 0),
-  confidence = ifelse(conf_resp == 6, 1, 0))
+  confidence = ifelse(conf_resp == 6, 1, 0),
+  cor_conf = ifelse((resp_obj == destination & 
+                       conf_resp== 6), 1, 0)) %>% 
+  filter(sub != 25) #& sub != 19 & sub != 17 & sub != 12)
 
 sub_plot = prescan_batch %>% 
   mutate(round_text = paste0('Round',round)) %>% 
-  group_by(sub, nquestion, round_text) %>% 
-  summarise(m = mean(correct), conf = mean(confidence)) 
+  group_by(sub, nquestion, round_text, round) %>% 
+  summarise(m = mean(correct), conf = mean(confidence),
+            cor_conf = mean(cor_conf)) 
+
+sub_plot %>% group_by(sub) %>% 
+  summarise(m = mean(m)) %>% 
+  arrange(m) %>% 
+  head()%>% gt()
 
 curr_plot = sub_plot %>%
   group_by(round_text, nquestion) %>% 
   summarise(mean = mean(m),
             se = sd(m)/sqrt(n()),
             mean_conf = mean(conf),
-            conf_se = sd(conf)/sqrt(n()))
+            conf_se = sd(conf)/sqrt(n()),
+            mean_cor_conf = mean(cor_conf),
+            cor_conf_se = sd(cor_conf)/sqrt(n()))
 
 
 ggplot(curr_plot, aes(x = nquestion, y = mean)) + 
@@ -80,6 +98,71 @@ ggplot(curr_plot, aes(x = nquestion, y = mean_conf)) +
   facet_wrap(~round_text)+
   labs(title = 'Confidence response for pre-scan')
   #gt() %>% cols_align(align = 'left')
+
+ggplot(curr_plot, aes(x = nquestion, y = mean_cor_conf)) + 
+  geom_histogram(stat = "identity")+
+  geom_errorbar(aes(ymin=mean_cor_conf-cor_conf_se, ymax=mean_cor_conf+cor_conf_se), color="red", width=0.1, size=0.5)+
+  facet_wrap(~round_text)+
+  labs(title = 'Confident correct for pre-scan')
+
+sub_plot$round_text = factor(sub_plot$round_text)
+```
+
+ANVOA for Accuracy:
+
+```{r}
+ez::ezANOVA(
+  data = sub_plot,
+  wid = sub,
+  within = .(round, nquestion),
+  dv = m
+)
+```
+
+ANVOA for Confidence:
+
+```{r}
+ez::ezANOVA(
+  data = sub_plot,
+  wid = sub,
+  within = .(round, nquestion),
+  dv = conf
+)
+```
+
+ANVOA for high confidence accuracy:
+
+```{r}
+ez::ezANOVA(
+  data = sub_plot,
+  wid = sub,
+  within = .(round, nquestion),
+  dv = cor_conf
+)
+```
+
+t-test for mean at question 2 (overlapping segment):
+
+```{r}
+t.test(sub_plot %>% filter(round == 1 & nquestion == 2) %>% .$m,
+       sub_plot %>% filter(round == 2 & nquestion == 2) %>% .$m,
+       paired = TRUE)
+```
+
+t-test for confidence at question 2 (overlapping segment):
+
+```{r}
+t.test(sub_plot %>% filter(round == 1 & nquestion == 2) %>% .$conf,
+       sub_plot %>% filter(round == 2 & nquestion == 2) %>% .$conf,
+       paired = TRUE)
+```
+
+t-test for high confidence accuracy at question 2 (overlapping segment):
+
+```{r}
+t.test(sub_plot %>% filter(round == 1 & nquestion == 2) %>% .$cor_conf,
+       sub_plot %>% filter(round == 2 & nquestion == 2) %>% .$cor_conf,
+       paired = TRUE)
 ```
 
 # Scan analysis
@@ -88,12 +171,12 @@ ggplot(curr_plot, aes(x = nquestion, y = mean_conf)) +
 
 Number of trials with no answer across all participant is `r scan_batch %>% filter(i_pic == -999) %>% summarise(n=n()) %>% .$n`
 
-Table with top 3 participants with most missing data -->
-Excluding subject 16.
+Table with top5 participants with most missing data -->
+Excluding subject 16. *Should we also exlude subject 23 based on the prescan?*
 
 ```{r,fig.width=6, fig.height=4}
 
-scan_batch %>% filter(i_pic == -999) %>% group_by(sub) %>% summarise(n=n()) %>% arrange(desc(n)) %>% head(3) %>% gt()
+scan_batch %>% filter(i_pic == -999) %>% group_by(sub) %>% summarise(n=n()) %>% arrange(desc(n)) %>% head() %>% gt()
 
 scan_batch = scan_batch %>% filter(sub != 16) %>% 
   mutate(correct = ifelse(post_first_resp_obj == destination, 1, 0))
@@ -120,7 +203,9 @@ nest_scan_fig = nest_scan_batch %>%
       geom_histogram(bins = 20)+
       labs(title = ..2,
            subtitle = ..3,
-           x = 'Index')+
+           x = 'Index') +
+      geom_vline(xintercept=25) +
+      geom_vline(xintercept=75) +
       theme_minimal()})) %>% 
   arrange(route)
 
@@ -222,6 +307,8 @@ nest_scan_fig = nest_scan_batch %>%
       labs(title = ..2,
            subtitle = ..3,
            x = 'Index')+
+      geom_vline(xintercept=25) +
+      geom_vline(xintercept=75) +
       theme_minimal()})) %>% 
   arrange(route)
 
@@ -264,9 +351,10 @@ There doesn't seem to be a significant difference between participant response i
 ### Correct & Valid
 
 ```{r}
-curr_plot = scan_batch %>% 
+sub_plot = scan_batch %>% 
   group_by(valid, sub) %>% 
-  summarise(m = mean(correct)) %>% 
+  summarise(m = mean(correct))
+curr_plot = sub_plot %>% 
   group_by(valid) %>% 
   summarise(m_correct = mean(m),
             se = sd(m)/sqrt(n()))
@@ -277,6 +365,14 @@ ggplot(curr_plot, aes(x = valid, y = m_correct)) +
   labs(title = 'Post-route accuracy for scan phase',
        x = element_blank())
   #gt() %>% cols_align(align = 'left')
+```
+
+t-test for valid vs. invalid accuracy
+
+```{r}
+t.test(sub_plot %>% filter(valid == 'valid') %>% .$m,
+       sub_plot %>% filter(valid == 'invalid') %>% .$m,
+       paired = TRUE)
 ```
 
 
