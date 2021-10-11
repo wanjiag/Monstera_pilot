@@ -196,15 +196,15 @@ t.test(sub_plot %>% filter(round == 1 & nquestion == 3) %>% .$cor_conf,
 Number of trials with no answer across all participant is `r scan_batch %>% filter(i_pic == -999) %>% summarise(n=n()) %>% .$n`
 
 Table with top5 participants with most missing data -->
-Excluding subject 16 and subject 23 (based on the pre-scan).
+Excluding subject 16, subject 23 (based on the pre-scan), and subject 25 (respond at 1 for all pictures)
 
 ```{r,fig.width=6, fig.height=4}
 
 scan_batch %>% filter(i_pic == -999) %>% group_by(sub) %>% summarise(n=n()) %>% arrange(desc(n)) %>% head() %>% gt()
 
-scan_batch = scan_batch %>% filter(sub != 16 & sub != 23) %>% 
+scan_batch = scan_batch %>% 
+  filter(sub != 16 & sub != 23 & sub != 25 & i_pic != -999) %>% 
   mutate(correct = ifelse(post_first_resp_obj == destination, 1, 0))
-
 ```
 
 For the following figure, the index is the picture when participant pressed button to indicate they are SURE of the destination. One distribution is drawn for each destination, colored by different participant.
@@ -215,9 +215,9 @@ It seems like within each subject, the response is quite consistent for where or
 *Participant11: pressing '6' prior to picture 25 for 52 times out of 96 times! Probably should also be excluded?*
 
 ```{r fig.width=16, fig.height=8}
+
 nest_scan_batch = scan_batch %>% 
   group_by(destination, route) %>%
-  filter(i_pic != -999) %>% 
   mutate(destination = as.factor(destination)) %>% 
   nest()
 
@@ -232,6 +232,11 @@ nest_scan_fig = nest_scan_batch %>%
       geom_vline(xintercept=75) +
       theme_minimal()})) %>% 
   arrange(route)
+
+#nest_scan_batch$density_max = nest_scan_batch %>% 
+#  apply(1, function(x) density(x$data$i_pic)$x[which.max(density(x$data$i_pic)$y)])
+
+#density(nest_scan_batch$data[[1]]$i_pic)$x[which.max(density(nest_scan_batch$data[[1]]$i_pic)$y)]
 
 ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
                   nest_scan_fig$nest_plot[[2]],
@@ -252,22 +257,21 @@ ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
 
 curr_plot = scan_batch %>% 
   filter(i_pic != -999) %>% 
-  mutate(stage = ifelse(i_pic <= 25, 'same',
+  mutate(segment = ifelse(i_pic <= 25, 'same',
                         ifelse(i_pic >= 75, 'non-overlap', 'overlap'))) %>%
-  mutate(stage = factor(stage, levels = c('same', 
+  mutate(segment = factor(segment, levels = c('same', 
                                              'overlap', 
                                              'non-overlap'))) %>% 
-  count(stage, sub) %>% 
-  group_by(stage) %>% 
+  count(segment, sub) %>% 
+  group_by(segment) %>% 
   summarise(m = mean(n),
             se = sd(n)/sqrt(n()),
             num = n())
 
-ggplot(curr_plot, aes(x = stage, y = m)) + 
+ggplot(curr_plot, aes(x = segment, y = m)) + 
   geom_histogram(stat = 'identity') + 
   geom_errorbar(aes(ymin=m-se, ymax=m+se), color="red", width=0.1, size=0.5)+
   labs(title = 'Average number of first response for each stage',
-       x = 'segment',
        y = 'Average number of first response',
        caption = paste0('# of subjects included for each part\nsame:', 
                         curr_plot$num[1],
@@ -283,6 +287,7 @@ ggplot(curr_plot, aes(x = stage, y = m)) +
 Most subjects have very little incorrect trials and there doesnt seem to be a difference in the timing when they pressed the button between the correct vs. incorrect.
 
 ```{r fig.width=6, fig.height=4}
+
 sub_plot = scan_batch %>% 
   filter(i_pic != -999) %>% 
   group_by(sub, correct) %>% 
@@ -376,9 +381,11 @@ There doesn't seem to be a significant difference between participant response i
 ### Correct & Valid
 
 ```{r}
+
 sub_plot = scan_batch %>% 
   group_by(valid, sub) %>% 
   summarise(m = mean(correct))
+
 curr_plot = sub_plot %>% 
   group_by(valid) %>% 
   summarise(m_correct = mean(m),
@@ -399,6 +406,45 @@ t-test for valid vs. invalid accuracy
 t.test(sub_plot %>% filter(valid == 'valid') %>% .$m,
        sub_plot %>% filter(valid == 'invalid') %>% .$m,
        paired = TRUE)
+```
+
+Separated by segment
+
+```{r}
+
+sub_plot = scan_batch %>% 
+  mutate(segment = ifelse(i_pic <= 25, 'same',
+                        ifelse(i_pic >= 75, 'non-overlap', 'overlap'))) %>%
+  mutate(segment = factor(segment, levels = c('same', 
+                                             'overlap', 
+                                             'non-overlap'))) %>% 
+  group_by(valid, sub, segment) %>% 
+  summarise(m = mean(correct),
+            n = n())
+
+curr_plot = sub_plot %>% 
+  group_by(valid,segment) %>% 
+  summarise(m_correct = mean(m),
+            se = sd(m)/sqrt(n()))
+
+ggplot(curr_plot, aes(x = valid, y = m_correct, fill = segment)) + 
+  geom_histogram(stat = "identity", position = 'dodge')+
+  geom_errorbar(aes(ymin=m_correct-se, ymax=m_correct+se), 
+                color="red", width=0.1, size=0.5,
+                position = position_dodge(0.9))+
+  colorblindr::scale_fill_OkabeIto()+
+  labs(title = 'Post-route accuracy for scan phase',
+       x = element_blank(),
+       y= 'accuracy')+
+  theme(legend.position = 'top')
+  #gt() %>% cols_align(align = 'left')
+```
+
+t-test for valid vs. invalid accuracy for the same segment (not paired due to imbalanced trials).
+
+```{r}
+t.test(sub_plot %>% filter(valid == 'valid' & segment == 'same') %>% .$m,
+       sub_plot %>% filter(valid == 'invalid' & segment == 'same') %>% .$m)
 ```
 
 
