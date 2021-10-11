@@ -196,13 +196,13 @@ t.test(sub_plot %>% filter(round == 1 & nquestion == 3) %>% .$cor_conf,
 Number of trials with no answer across all participant is `r scan_batch %>% filter(i_pic == -999) %>% summarise(n=n()) %>% .$n`
 
 Table with top5 participants with most missing data -->
-Excluding subject 16. *Should we also exlude subject 23 based on the prescan?*
+Excluding subject 16 and subject 23 (based on the pre-scan).
 
 ```{r,fig.width=6, fig.height=4}
 
 scan_batch %>% filter(i_pic == -999) %>% group_by(sub) %>% summarise(n=n()) %>% arrange(desc(n)) %>% head() %>% gt()
 
-scan_batch = scan_batch %>% filter(sub != 16) %>% 
+scan_batch = scan_batch %>% filter(sub != 16 & sub != 23) %>% 
   mutate(correct = ifelse(post_first_resp_obj == destination, 1, 0))
 
 ```
