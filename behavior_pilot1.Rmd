@@ -141,27 +141,51 @@ ez::ezANOVA(
 )
 ```
 
-t-test for mean at question 2 (overlapping segment):
+t-test for mean (overlapping segment):
 
 ```{r}
+t.test(sub_plot %>% filter(round == 1 & nquestion == 1) %>% .$m,
+       sub_plot %>% filter(round == 2 & nquestion == 1) %>% .$m,
+       paired = TRUE)
+
 t.test(sub_plot %>% filter(round == 1 & nquestion == 2) %>% .$m,
        sub_plot %>% filter(round == 2 & nquestion == 2) %>% .$m,
        paired = TRUE)
-```
 
-t-test for confidence at question 2 (overlapping segment):
-
-```{r}
-t.test(sub_plot %>% filter(round == 1 & nquestion == 2) %>% .$conf,
-       sub_plot %>% filter(round == 2 & nquestion == 2) %>% .$conf,
+t.test(sub_plot %>% filter(round == 1 & nquestion == 3) %>% .$m,
+       sub_plot %>% filter(round == 2 & nquestion == 3) %>% .$m,
        paired = TRUE)
 ```
 
-t-test for high confidence accuracy at question 2 (overlapping segment):
+t-test for confidence (overlapping segment):
 
 ```{r}
+t.test(sub_plot %>% filter(round == 1 & nquestion == 1) %>% .$conf,
+       sub_plot %>% filter(round == 2 & nquestion == 1) %>% .$conf,
+       paired = TRUE)
+
+t.test(sub_plot %>% filter(round == 1 & nquestion == 2) %>% .$conf,
+       sub_plot %>% filter(round == 2 & nquestion == 2) %>% .$conf,
+       paired = TRUE)
+
+t.test(sub_plot %>% filter(round == 1 & nquestion == 3) %>% .$conf,
+       sub_plot %>% filter(round == 2 & nquestion == 3) %>% .$conf,
+       paired = TRUE)
+```
+
+t-test for high confidence accuracy (overlapping segment):
+
+```{r}
+t.test(sub_plot %>% filter(round == 1 & nquestion == 1) %>% .$cor_conf,
+       sub_plot %>% filter(round == 2 & nquestion == 1) %>% .$cor_conf,
+       paired = TRUE)
+
 t.test(sub_plot %>% filter(round == 1 & nquestion == 2) %>% .$cor_conf,
        sub_plot %>% filter(round == 2 & nquestion == 2) %>% .$cor_conf,
+       paired = TRUE)
+
+t.test(sub_plot %>% filter(round == 1 & nquestion == 3) %>% .$cor_conf,
+       sub_plot %>% filter(round == 2 & nquestion == 3) %>% .$cor_conf,
        paired = TRUE)
 ```
 
@@ -243,6 +267,7 @@ ggplot(curr_plot, aes(x = stage, y = m)) +
   geom_histogram(stat = 'identity') + 
   geom_errorbar(aes(ymin=m-se, ymax=m+se), color="red", width=0.1, size=0.5)+
   labs(title = 'Average number of first response for each stage',
+       x = 'segment',
        y = 'Average number of first response',
        caption = paste0('# of subjects included for each part\nsame:', 
                         curr_plot$num[1],
@@ -363,7 +388,8 @@ ggplot(curr_plot, aes(x = valid, y = m_correct)) +
   geom_histogram(stat = "identity")+
   geom_errorbar(aes(ymin=m_correct-se, ymax=m_correct+se), color="red", width=0.1, size=0.5)+
   labs(title = 'Post-route accuracy for scan phase',
-       x = element_blank())
+       x = element_blank(),
+       y= 'accuracy')
   #gt() %>% cols_align(align = 'left')
 ```
 
