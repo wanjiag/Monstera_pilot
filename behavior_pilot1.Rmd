@@ -256,7 +256,6 @@ ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
 ```{r}
 
 curr_plot = scan_batch %>% 
-  filter(i_pic != -999) %>% 
   mutate(segment = ifelse(i_pic <= 25, 'same',
                         ifelse(i_pic >= 75, 'non-overlap', 'overlap'))) %>%
   mutate(segment = factor(segment, levels = c('same', 
@@ -289,7 +288,6 @@ Most subjects have very little incorrect trials and there doesnt seem to be a di
 ```{r fig.width=6, fig.height=4}
 
 sub_plot = scan_batch %>% 
-  filter(i_pic != -999) %>% 
   group_by(sub, correct) %>% 
   summarise(m_idx = mean(i_pic),
             n_resp = n())
@@ -326,7 +324,6 @@ ggplot(curr_plot, aes(x = correct,
 
 nest_scan_batch = scan_batch %>% 
   group_by(destination, route) %>% 
-  filter(i_pic != -999) %>% 
   mutate(destination = as.factor(destination)) %>% 
   nest()
 
@@ -359,7 +356,6 @@ ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
 ```{r fig.width=6, fig.height=4}
 
 curr_plot = scan_batch %>% 
-  filter(i_pic != -999) %>% 
   group_by(sub, valid) %>% 
   summarise(m_idx = mean(i_pic)) %>% 
   group_by(valid) %>% 
@@ -459,7 +455,6 @@ Percentage of correct for the question after seeing the whole route, separating 
 
 ```{r}
 curr_plot = scan_batch %>% 
-  filter(i_pic != -999) %>% 
   group_by(sub, valid, correct) %>% 
   summarise(m_idx = mean(i_pic)) %>% 
   group_by(valid, correct) %>% 
