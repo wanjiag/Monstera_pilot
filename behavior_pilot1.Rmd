@@ -207,6 +207,36 @@ scan_batch = scan_batch %>%
   mutate(correct = ifelse(post_first_resp_obj == destination, 1, 0))
 ```
 
+
+```{r, results='hide'}
+resp_1 = scan_batch %>% filter(i_pic == 1 & other_resp != '[-999]') %>% 
+  mutate(first_other_resp = other_resp) %>% 
+  separate(first_other_resp, c('resp', 'rt', 'i_pic'), sep = ',') %>% 
+  mutate(
+     resp = str_extract(
+        resp, 
+        "[0-9]+"
+        ) %>% as.integer(),
+     i_pic = str_extract(
+        i_pic, 
+        "[0-9]+") %>% as.integer(),
+     rt = rt %>% as.numeric()
+  )
+
+nrow(scan_batch)
+nrow(resp_1)
+
+scan_batch = rbind(anti_join(scan_batch, resp_1,
+               by = c("other_resp", "post_first_resp", "post_first_resp_obj", "post_first_rt", "post_route_others", "cue", "valid", "route", "destination", "trial", "sub", "round", "correct")),
+               resp_1)
+
+nrow(scan_batch)
+
+#scan_batch %>% 
+#  mutate(other_TF = ifelse(other_resp == '[-999]', 1, 0)) %>% 
+#  count(other_TF)
+```
+
 For the following figure, the index is the picture when participant pressed button to indicate they are SURE of the destination. One distribution is drawn for each destination, colored by different participant.
 (1-25: Same; 26-75: Overlapping; 76-100: Non-overlapping).
 
@@ -441,17 +471,11 @@ t-test for valid vs. invalid accuracy for the same segment (not paired due to im
 ```{r}
 t.test(sub_plot %>% filter(valid == 'valid' & segment == 'same') %>% .$m,
        sub_plot %>% filter(valid == 'invalid' & segment == 'same') %>% .$m)
-```
 
-
-```{r,include=FALSE}
-  #gt() %>% 
-  #cols_align(align = 'left') %>% 
-  #cols_label(valid = "", m_correct = "% correct")
+t.test(sub_plot %>% filter(valid == 'invalid' & segment == 'same') %>% .$m, mu=0.5)
 ```
 
 Percentage of correct for the question after seeing the whole route, separating by valid vs. invalid cue. Participants were instructed to indicate where they though they were going when pressing the button in the middle of the route. The answer for invalid is very slightly lower than valid.
-
 
 ```{r}
 curr_plot = scan_batch %>% 
