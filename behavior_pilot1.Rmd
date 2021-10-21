@@ -189,6 +189,54 @@ t.test(sub_plot %>% filter(round == 1 & nquestion == 3) %>% .$cor_conf,
        paired = TRUE)
 ```
 
+
+```{r}
+
+route_df <- data.frame(route=rep(c('pair1_east', 
+                             'pair2_north', 
+                             'pair3_west', 
+                             'pair4_south'), each=2),
+                 destination=c('bench', 'bikerack', 
+                               'pole', 'window', 
+                               'bush', 'pergola', 
+                               'entrance', 'map'),
+                 competitor=c('bikerack','bench',
+                               'window', 'pole', 
+                               'pergola', 'bush', 
+                               'map', 'entrance'))
+
+prescan_batch_competitor = prescan_batch %>% 
+  inner_join(route_df, by = c('route', 'destination')) %>% 
+  mutate(type = ifelse(resp_obj == destination, 'target',
+                       ifelse(resp_obj == competitor, 'competitor',
+                              'non-competitor')
+                       ))
+
+prescan_batch_competitor %>% 
+  mutate(sub = as.factor(sub),
+         nquestion = as.factor(nquestion),
+         round = as.factor(round),
+         type = as.factor(type)) %>% 
+  count(sub, nquestion, round, type, .drop=FALSE) %>% 
+  mutate(percentage = n / 4) %>% 
+  group_by(nquestion, round, type) %>% 
+  summarise(m = mean(percentage),
+            se = sd(percentage)/sqrt(n()),
+            n = n()) %>% 
+  mutate(round_text = paste0('Round',round)) %>% 
+  ggplot(aes(x = nquestion, y = m, fill = type)) + 
+  geom_histogram(stat = "identity", position = 'dodge')+
+  geom_errorbar(aes(ymin=m-se, ymax=m+se), color="black", width=0.1, size=0.5,
+                position = position_dodge(0.9))+
+  facet_wrap(~round_text)+
+  theme(legend.position = 'bottom')+
+  labs(title = 'Correct for pre-scan,\nspearated by answer type',
+       y = 'percentage')+
+  colorblindr::scale_fill_OkabeIto()
+  
+```
+
+
 # Scan analysis
 
 ### Quality check
@@ -209,6 +257,8 @@ scan_batch = scan_batch %>%
 
 
 ```{r, results='hide'}
+# Swapping all responses is collected at picture 1 with a later response into the later response
+
 resp_1 = scan_batch %>% filter(i_pic == 1 & other_resp != '[-999]') %>% 
   mutate(first_other_resp = other_resp) %>% 
   separate(first_other_resp, c('resp', 'rt', 'i_pic'), sep = ',') %>% 
@@ -236,6 +286,27 @@ nrow(scan_batch)
 #  mutate(other_TF = ifelse(other_resp == '[-999]', 1, 0)) %>% 
 #  count(other_TF)
 ```
+
+
+```{r}
+# Using the last response instead
+
+resp_1 = scan_batch %>% filter(other_resp != '[-999]') %>% 
+  mutate(first_other_resp = other_resp) %>% 
+  separate(first_other_resp, c('resp', 'rt', 'i_pic'), sep = ',') %>% 
+  mutate(
+     resp = str_extract(
+        resp, 
+        "[0-9]+"
+        ) %>% as.integer(),
+     i_pic = str_extract(
+        i_pic, 
+        "[0-9]+") %>% as.integer(),
+     rt = rt %>% as.numeric()
+  )
+
+```
+
 
 For the following figure, the index is the picture when participant pressed button to indicate they are SURE of the destination. One distribution is drawn for each destination, colored by different participant.
 (1-25: Same; 26-75: Overlapping; 76-100: Non-overlapping).
