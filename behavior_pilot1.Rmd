@@ -244,15 +244,17 @@ prescan_batch_competitor %>%
 Number of trials with no answer across all participant is `r scan_batch %>% filter(i_pic == -999) %>% summarise(n=n()) %>% .$n`
 
 Table with top5 participants with most missing data -->
-Excluding subject 16, subject 23 (based on the pre-scan), and subject 25 (respond at 1 for all pictures)
+Excluding subject 12, subject 16, subject 23 (based on the pre-scan), and subject 25 (respond at 1 for all pictures)
 
 ```{r,fig.width=6, fig.height=4}
 
 scan_batch %>% filter(i_pic == -999) %>% group_by(sub) %>% summarise(n=n()) %>% arrange(desc(n)) %>% head() %>% gt()
 
 scan_batch = scan_batch %>% 
-  filter(sub != 16 & sub != 23 & sub != 25 & i_pic != -999) %>% 
+  filter(sub != 12 & sub != 16 & sub != 23 & sub != 25 & i_pic != -999) %>% 
   mutate(correct = ifelse(post_first_resp_obj == destination, 1, 0))
+
+scan_batch %>% group_by(sub) %>% summarise(m=mean(correct)) %>% arrange(m) %>% head() %>% gt()
 ```
 
 
@@ -272,19 +274,33 @@ resp_1 = scan_batch %>% filter(i_pic == 1 & other_resp != '[-999]') %>%
         "[0-9]+") %>% as.integer(),
      rt = rt %>% as.numeric()
   )
+```
 
+Number of total responses
+```{r}
 nrow(scan_batch)
-nrow(resp_1)
+```
 
+Number of responses of 1 at image 1 with a later response:
+```{r}
+nrow(resp_1)
+```
+
+
+```{r}
 scan_batch = rbind(anti_join(scan_batch, resp_1,
                by = c("other_resp", "post_first_resp", "post_first_resp_obj", "post_first_rt", "post_route_others", "cue", "valid", "route", "destination", "trial", "sub", "round", "correct")),
                resp_1)
 
 nrow(scan_batch)
+```
 
-#scan_batch %>% 
-#  mutate(other_TF = ifelse(other_resp == '[-999]', 1, 0)) %>% 
-#  count(other_TF)
+Number of responses with more than 1 response:
+
+```{r}
+scan_batch %>% 
+  mutate(other_TF = ifelse(other_resp == '[-999]', 1, 0)) %>% 
+  count(other_TF)
 ```
 
 
@@ -540,6 +556,12 @@ ggplot(curr_plot, aes(x = valid, y = m_correct, fill = segment)) +
 t-test for valid vs. invalid accuracy for the same segment (not paired due to imbalanced trials).
 
 ```{r}
+pair_t_test_df = sub_plot %>% filter(segment == 'same') %>% select(-n) %>% pivot_wider(names_from = valid, values_from = m) 
+
+pair_t_test_df = pair_t_test_df[complete.cases(pair_t_test_df),]
+
+t.test(pair_t_test_df$valid, pair_t_test_df$invalid, paired = TRUE)
+
 t.test(sub_plot %>% filter(valid == 'valid' & segment == 'same') %>% .$m,
        sub_plot %>% filter(valid == 'invalid' & segment == 'same') %>% .$m)
 
@@ -567,5 +589,80 @@ ggplot(curr_plot, aes(x = valid,
        y = 'picture index') + 
   facet_wrap(~correct_label)
 
+```
+
+
+Separated by target, competitor, and non-competitor
+```{r}
+
+scan_batch_competitor = scan_batch %>% 
+  inner_join(route_df, by = c('route', 'destination')) %>% 
+  mutate(type = ifelse(post_first_resp_obj == destination, 'target',
+                       ifelse(post_first_resp_obj == competitor, 'competitor',
+                              'non-competitor')
+                       ))
+
+per_sub = scan_batch_competitor %>% 
+  mutate(sub = as.factor(sub),
+         round = as.factor(round),
+         type = as.factor(type)) %>% 
+  group_by(valid, sub, .drop = FALSE) %>% 
+  count()
+
+per_sub = scan_batch_competitor %>% 
+  mutate(sub = as.factor(sub),
+         round = as.factor(round),
+         type = as.factor(type)) %>% 
+  group_by(type, valid, sub, .drop = FALSE) %>% 
+  count(name = 'count') %>% 
+  inner_join(per_sub, by = c('valid', 'sub')) %>% 
+  mutate(percentage = count / n)
+
+curr_plot = per_sub %>% group_by(type, valid) %>% 
+  summarise(m = mean(percentage),
+            se = sd(percentage)/sqrt(n()))
+
+ggplot(curr_plot, aes(x = valid, y = m, fill = type)) + 
+  geom_histogram(stat = 'identity', position = 'dodge') +
+  geom_errorbar(aes(ymin=m-se, ymax=m+se), color="black", 
+                width=0.1, size=0.5,
+                position = position_dodge(0.9))+
+  colorblindr::scale_fill_OkabeIto()+
+  theme(legend.position = 'bottom')+
+  labs(y = 'mean percentage per subject',
+       x = element_blank())
+
+ggplot(curr_plot  %>% 
+  filter(type != 'target'), aes(x = valid, y = m, fill = type)) + 
+  geom_histogram(stat = 'identity', position = 'dodge') +
+  geom_errorbar(aes(ymin=m-se, ymax=m+se), color="black", 
+                width=0.1, size=0.5,
+                position = position_dodge(0.9))+
+  colorblindr::scale_fill_OkabeIto()+
+  theme(legend.position = 'bottom')+
+  labs(y = 'mean percentage per subject',
+       x = element_blank())
+```
+
+anova (3 type x 2 valid)
+
+```{r}
+ez::ezANOVA(
+  data = per_sub,
+  wid = sub,
+  within = .(valid, type),
+  dv = percentage
+)
+```
+
+
+For competitor, valid vs. invalid. Paired t-test.
+
+```{r}
+t.test(
+  per_sub %>% filter(valid == 'invalid' & type == 'competitor') %>% .$percentage,
+  per_sub %>% filter(valid == 'valid' & type == 'competitor') %>% .$percentage,
+  paired = TRUE
+)
 ```
 
