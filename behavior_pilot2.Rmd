@@ -68,8 +68,9 @@ scan_batch %>% group_by(sub) %>% summarise(
 ) %>% gt()
 ```
 
-**Sub01: never confident before non-overlapping segment**
-**Excluding subject 01 and 03**
+*sub01: never confident before non-overlapping segment. *
+
+*Excluding subject 01 and 03*
 
 ```{r}
 prescan_batch = prescan_batch %>% filter(sub != '01' & sub != '03')
@@ -100,17 +101,26 @@ sub_plot = prescan_batch %>%
 sub_plot %>% group_by(sub) %>% 
   summarise(m = mean(m)) %>% 
   arrange(m) %>% 
-  head() %>% gt()
+  head() %>% gt() %>%
+  tab_header(
+    title = "Mean accuracy"
+  )
 
 sub_plot %>% group_by(sub) %>% 
   summarise(m = mean(conf)) %>% 
   arrange(m) %>% 
-  head() %>% gt()
+  head() %>% gt()%>%
+  tab_header(
+    title = "Mean confidence"
+  )
 
 sub_plot %>% group_by(sub) %>% 
   summarise(m = mean(cor_conf)) %>% 
   arrange(m) %>% 
-  head() %>% gt()
+  head() %>% gt()%>%
+  tab_header(
+    title = "Mean confident correct"
+  )
 
 curr_plot = sub_plot %>%
   group_by(round_text, nquestion) %>% 
@@ -146,7 +156,7 @@ sub_plot$round_text = factor(sub_plot$round_text)
 
 ANVOA for Accuracy:
 
-```{r}
+```{r, eval=FALSE}
 ez::ezANOVA(
   data = sub_plot,
   wid = sub,
@@ -157,7 +167,7 @@ ez::ezANOVA(
 
 ANVOA for Confidence:
 
-```{r}
+```{r, eval=FALSE}
 ez::ezANOVA(
   data = sub_plot,
   wid = sub,
@@ -168,7 +178,7 @@ ez::ezANOVA(
 
 ANVOA for high confidence accuracy:
 
-```{r}
+```{r, eval=FALSE}
 ez::ezANOVA(
   data = sub_plot,
   wid = sub,
@@ -179,7 +189,7 @@ ez::ezANOVA(
 
 t-test for mean (overlapping segment):
 
-```{r}
+```{r, eval=FALSE}
 t.test(sub_plot %>% filter(round == 1 & nquestion == 1) %>% .$m,
        sub_plot %>% filter(round == 2 & nquestion == 1) %>% .$m,
        paired = TRUE)
@@ -195,7 +205,7 @@ t.test(sub_plot %>% filter(round == 1 & nquestion == 3) %>% .$m,
 
 t-test for confidence (overlapping segment):
 
-```{r}
+```{r, eval=FALSE}
 t.test(sub_plot %>% filter(round == 1 & nquestion == 1) %>% .$conf,
        sub_plot %>% filter(round == 2 & nquestion == 1) %>% .$conf,
        paired = TRUE)
@@ -211,7 +221,7 @@ t.test(sub_plot %>% filter(round == 1 & nquestion == 3) %>% .$conf,
 
 t-test for high confidence accuracy (overlapping segment):
 
-```{r}
+```{r, eval=FALSE}
 t.test(sub_plot %>% filter(round == 1 & nquestion == 1) %>% .$cor_conf,
        sub_plot %>% filter(round == 2 & nquestion == 1) %>% .$cor_conf,
        paired = TRUE)
@@ -305,6 +315,18 @@ ggplot(curr_plot, aes(x = round, y = accuracy, color = type)) +
 Distribution of picture index:
 
 ```{r}
+
+curr_plot = scan_batch %>% group_by(npic, route, destination) %>% summarise(
+  m_correct = mean(correct),
+  m_conf_correct = mean(cor_conf))
+
+ggplot(curr_plot, aes(x = npic, y = m_correct)) + 
+  geom_line()+
+  facet_wrap(destination~route)
+
+ggplot(curr_plot, aes(x = npic, y = m_conf_correct)) + 
+  geom_line()+
+  facet_wrap(destination~route)
 
 ```
 
