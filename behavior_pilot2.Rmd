@@ -68,14 +68,14 @@ scan_batch %>% group_by(sub) %>% summarise(
 ) %>% gt()
 ```
 
-*sub01: never confident before non-overlapping segment. *
+*Excluding subject 05*
 
-*Excluding subject 01 and 03*
+*Notice: sub1/3/5/7 have very low confidence.*
 
 ```{r}
-prescan_batch = prescan_batch %>% filter(sub != '01' & sub != '03')
-scan_batch = scan_batch %>% filter(sub != '01' & sub != '03')
-postscan_batch = postscan_batch %>% filter(sub != '01' & sub != '03')
+prescan_batch = prescan_batch %>% filter(sub != '05')#  & sub != '03'& sub != '01')
+scan_batch = scan_batch %>% filter(sub != '05')# & sub != '03' & sub != '01')
+postscan_batch = postscan_batch %>% filter(sub != '05')# & sub != '03' & sub != '01')
 ```
 
 
@@ -303,7 +303,14 @@ curr_plot = scan_batch %>% group_by(round, sub) %>% summarise(
                    values_to = 'accuracy') %>% 
   pivot_longer(cols = starts_with('se_'),
                    names_to = 'se_type',
-                   values_to = 'se')
+                   values_to = 'se') %>% 
+  separate(type, c("A", "type", "C"), sep = '_') %>% 
+  mutate(type = ifelse(type == 'conf', 'conf_correct', type)) %>% 
+  select(-c(A, C)) %>% 
+  separate(se_type, c("A", "se_type", "C"), sep = '_') %>% 
+  mutate(se_type = ifelse(se_type == 'conf', 'conf_correct', se_type)) %>% 
+  select(-c(A, C)) %>% 
+  filter(type == se_type)
 
 ggplot(curr_plot, aes(x = round, y = accuracy, color = type)) +
   geom_line(size = 1)+
@@ -318,15 +325,67 @@ Distribution of picture index:
 
 curr_plot = scan_batch %>% group_by(npic, route, destination) %>% summarise(
   m_correct = mean(correct),
-  m_conf_correct = mean(cor_conf))
+  m_conf_correct = mean(cor_conf)) %>% 
+  mutate(route = factor(route, levels = c('pair1_east','pair3_west','pair2_north','pair4_south')),
+         destination = factor(destination, levels = c('bench','bikerack','bush','pergola',
+                                   'pole','window','entrance','map')))
 
 ggplot(curr_plot, aes(x = npic, y = m_correct)) + 
   geom_line()+
-  facet_wrap(destination~route)
+  facet_wrap(destination~route, ncol = 2)+
+  labs(title = 'Accuracy over picture')
 
 ggplot(curr_plot, aes(x = npic, y = m_conf_correct)) + 
   geom_line()+
-  facet_wrap(destination~route)
+  facet_wrap(destination~route, ncol = 2)+
+  labs(title = 'High confidence accuracy over picture')
 
 ```
+
+
+# Postscan analysis
+
+```{r}
+postscan_batch = postscan_batch %>% 
+  mutate(
+  correct = ifelse(post_first_resp_obj == destination, 1, 0))
+
+postscan_batch %>% group_by(sub) %>% 
+  summarise(m = mean(correct)) %>% 
+  gt() %>%
+  tab_header(
+    title = "Mean accuracy per subject"
+  )
+
+postscan_batch %>% group_by(sub) %>% 
+  summarise(m = mean(correct)) %>% 
+  summarise(m = mean(m))
+```
+
+
+```{r fig.width=16, fig.height=10}
+postscan_batch %>% 
+  filter(correct == 1) %>%
+  mutate(route = factor(route, levels = c('pair1_east','pair3_west','pair2_north','pair4_south')),
+         destination = factor(destination, levels = c('bench','bikerack','bush','pergola','pole','window','entrance','map'))) %>% 
+  ggplot(aes(x = npic, fill = sub)) +
+  geom_histogram() +
+  labs(title = 'Picture index for correct trials')+
+  facet_wrap(destination~route, ncol = 2)
+```
+
+
+```{r}
+postscan_batch %>% 
+  filter(correct == 0) %>%
+  mutate(route = factor(route, levels = c('pair1_east','pair3_west','pair2_north','pair4_south')),
+         destination = factor(destination, levels = c('bench','bikerack','bush','pergola','pole','window','entrance','map'))) %>% 
+  ggplot(aes(x = npic, fill = sub)) +
+  geom_histogram() +
+  labs(title = 'Picture index for incorrect trials')+
+  facet_wrap(destination~route, ncol = 2)
+
+
+```
+
 

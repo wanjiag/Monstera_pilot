@@ -370,6 +370,40 @@ ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
 
 *I also found some subjects with response at picture 1, and later we received another response. In that case, maybe we should use the later response instead?*
 
+
+```{r}
+nest_scan_batch = scan_batch %>% 
+  group_by(destination, route) %>%
+  mutate(destination = as.factor(destination))
+
+ggplot(nest_scan_batch, aes(x=i_pic, fill = destination)) + 
+  geom_density() + 
+  geom_histogram(bins = 20) + 
+  labs(x = 'Index') +
+  geom_vline(xintercept=25) +
+  geom_vline(xintercept=75) +
+  theme_minimal()+
+  facet_wrap(~route)
+
+#nest_scan_batch$density_max = nest_scan_batch %>% 
+#  apply(1, function(x) density(x$data$i_pic)$x[which.max(density(x$data$i_pic)$y)])
+
+#density(nest_scan_batch$data[[1]]$i_pic)$x[which.max(density(nest_scan_batch$data[[1]]$i_pic)$y)]
+
+ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
+                  nest_scan_fig$nest_plot[[2]],
+                  nest_scan_fig$nest_plot[[3]],
+                  nest_scan_fig$nest_plot[[4]],
+                  nest_scan_fig$nest_plot[[5]],
+                  nest_scan_fig$nest_plot[[6]],
+                  nest_scan_fig$nest_plot[[7]],
+                  nest_scan_fig$nest_plot[[8]],
+                  ncol = 4, nrow = 2,
+                  common.legend = FALSE,
+                  legend = 'bottom')
+```
+
+
 ```{r}
 
 curr_plot = scan_batch %>% 
