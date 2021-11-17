@@ -1,5 +1,5 @@
 ---
-title: "pilot2"
+title: "Behavior Pilot v2"
 author: "Wanjia Guo"
 date: "11/16/2021"
 output:
@@ -58,7 +58,7 @@ scan_batch = scan_batch %>%
                        conf_resp== 6), 1, 0))
 ```
 
-Accuracy per sub:
+Accuracy per sub during scan phase:
 
 ```{r}
 scan_batch %>% group_by(sub) %>% summarise(
@@ -70,7 +70,7 @@ scan_batch %>% group_by(sub) %>% summarise(
 
 *Excluding subject 05*
 
-*Notice: sub1/3/5/7 have very low confidence.*
+*Notice: sub1/3/7 have very low confidence.*
 
 ```{r}
 prescan_batch = prescan_batch %>% filter(sub != '05')#  & sub != '03'& sub != '01')
@@ -99,28 +99,19 @@ sub_plot = prescan_batch %>%
             cor_conf = mean(cor_conf)) 
 
 sub_plot %>% group_by(sub) %>% 
-  summarise(m = mean(m)) %>% 
-  arrange(m) %>% 
-  head() %>% gt() %>%
-  tab_header(
-    title = "Mean accuracy"
-  )
-
-sub_plot %>% group_by(sub) %>% 
-  summarise(m = mean(conf)) %>% 
-  arrange(m) %>% 
-  head() %>% gt()%>%
-  tab_header(
-    title = "Mean confidence"
-  )
-
-sub_plot %>% group_by(sub) %>% 
-  summarise(m = mean(cor_conf)) %>% 
-  arrange(m) %>% 
-  head() %>% gt()%>%
-  tab_header(
-    title = "Mean confident correct"
-  )
+  summarise(correct = mean(m)) %>% 
+  inner_join(
+    sub_plot %>% group_by(sub) %>% 
+    summarise(conf = mean(conf)) %>% 
+    arrange(conf)) %>% 
+  inner_join(
+    sub_plot %>% group_by(sub) %>% 
+    summarise(conf_correct = mean(cor_conf))) %>% 
+  gt() %>%
+  fmt_number(
+    columns = starts_with('co'),
+    decimals = 3)%>%
+  tab_header(title = "Prescan Performance") 
 
 curr_plot = sub_plot %>%
   group_by(round_text, nquestion) %>% 
@@ -156,7 +147,7 @@ sub_plot$round_text = factor(sub_plot$round_text)
 
 ANVOA for Accuracy:
 
-```{r, eval=FALSE}
+```{r}
 ez::ezANOVA(
   data = sub_plot,
   wid = sub,
@@ -167,7 +158,7 @@ ez::ezANOVA(
 
 ANVOA for Confidence:
 
-```{r, eval=FALSE}
+```{r}
 ez::ezANOVA(
   data = sub_plot,
   wid = sub,
@@ -178,7 +169,7 @@ ez::ezANOVA(
 
 ANVOA for high confidence accuracy:
 
-```{r, eval=FALSE}
+```{r}
 ez::ezANOVA(
   data = sub_plot,
   wid = sub,
@@ -189,7 +180,7 @@ ez::ezANOVA(
 
 t-test for mean (overlapping segment):
 
-```{r, eval=FALSE}
+```{r}
 t.test(sub_plot %>% filter(round == 1 & nquestion == 1) %>% .$m,
        sub_plot %>% filter(round == 2 & nquestion == 1) %>% .$m,
        paired = TRUE)
@@ -205,7 +196,7 @@ t.test(sub_plot %>% filter(round == 1 & nquestion == 3) %>% .$m,
 
 t-test for confidence (overlapping segment):
 
-```{r, eval=FALSE}
+```{r}
 t.test(sub_plot %>% filter(round == 1 & nquestion == 1) %>% .$conf,
        sub_plot %>% filter(round == 2 & nquestion == 1) %>% .$conf,
        paired = TRUE)
@@ -221,7 +212,7 @@ t.test(sub_plot %>% filter(round == 1 & nquestion == 3) %>% .$conf,
 
 t-test for high confidence accuracy (overlapping segment):
 
-```{r, eval=FALSE}
+```{r}
 t.test(sub_plot %>% filter(round == 1 & nquestion == 1) %>% .$cor_conf,
        sub_plot %>% filter(round == 2 & nquestion == 1) %>% .$cor_conf,
        paired = TRUE)
@@ -321,7 +312,7 @@ ggplot(curr_plot, aes(x = round, y = accuracy, color = type)) +
 
 Distribution of picture index:
 
-```{r}
+```{r fig.width=10, fig.height=12}
 
 curr_plot = scan_batch %>% group_by(npic, route, destination) %>% summarise(
   m_correct = mean(correct),
@@ -384,8 +375,6 @@ postscan_batch %>%
   geom_histogram() +
   labs(title = 'Picture index for incorrect trials')+
   facet_wrap(destination~route, ncol = 2)
-
-
 ```
 
 

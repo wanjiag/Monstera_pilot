@@ -374,16 +374,18 @@ ggpubr::ggarrange(nest_scan_fig$nest_plot[[1]],
 ```{r}
 nest_scan_batch = scan_batch %>% 
   group_by(destination, route) %>%
-  mutate(destination = as.factor(destination))
+  mutate(destination = as.factor(destination)) %>% 
+  mutate(group = ifelse((route == 'pair1_east' | route == 'pair3_west'), 'odd_sub', 'even_sub'))
 
-ggplot(nest_scan_batch, aes(x=i_pic, fill = destination)) + 
-  geom_density() + 
-  geom_histogram(bins = 20) + 
+ggplot(nest_scan_batch, aes(x=i_pic, color = destination, fill = destination)) + 
+  #geom_histogram(aes(y=..density..), alpha=0.5, 
+  #              position="identity", bins = 20) +
+  geom_density(alpha=.2) + 
   labs(x = 'Index') +
   geom_vline(xintercept=25) +
   geom_vline(xintercept=75) +
   theme_minimal()+
-  facet_wrap(~route)
+  facet_wrap(~group)
 
 #nest_scan_batch$density_max = nest_scan_batch %>% 
 #  apply(1, function(x) density(x$data$i_pic)$x[which.max(density(x$data$i_pic)$y)])
