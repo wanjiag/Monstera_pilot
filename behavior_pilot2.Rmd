@@ -348,11 +348,12 @@ postscan_batch %>% group_by(sub) %>%
     title = "Mean accuracy per subject"
   )
 
-postscan_batch %>% group_by(sub) %>% 
+avg = postscan_batch %>% group_by(sub) %>% 
   summarise(m = mean(correct)) %>% 
-  summarise(m = mean(m))
+  summarise(m = mean(m)) %>% .$m
 ```
 
+Average accuracy = `r avg`
 
 ```{r fig.width=16, fig.height=10}
 postscan_batch %>% 
@@ -361,6 +362,8 @@ postscan_batch %>%
          destination = factor(destination, levels = c('bench','bikerack','bush','pergola','pole','window','entrance','map'))) %>% 
   ggplot(aes(x = npic, fill = sub)) +
   geom_histogram() +
+  geom_vline(xintercept=25) +
+  geom_vline(xintercept=75) +
   labs(title = 'Picture index for correct trials')+
   facet_wrap(destination~route, ncol = 2)
 ```
@@ -373,6 +376,8 @@ postscan_batch %>%
          destination = factor(destination, levels = c('bench','bikerack','bush','pergola','pole','window','entrance','map'))) %>% 
   ggplot(aes(x = npic, fill = sub)) +
   geom_histogram() +
+  geom_vline(xintercept=25) +
+  geom_vline(xintercept=75) +
   labs(title = 'Picture index for incorrect trials')+
   facet_wrap(destination~route, ncol = 2)
 ```
