@@ -58,30 +58,14 @@ scan_batch = scan_batch %>%
                        conf_resp== 6), 1, 0))
 ```
 
-Accuracy per sub during scan phase:
-
 ```{r}
 scan_batch %>% group_by(sub) %>% summarise(
-  m_correct = mean(correct),
-  m_conf = mean(confidence),
-  m_conf_correct = mean(cor_conf)
-) %>% gt()
+  correct = mean(correct),
+  conf = mean(confidence),
+  conf_correct = mean(cor_conf)
+) %>% gt()%>%
+  tab_header(title = "Scan Performance") 
 ```
-
-*Excluding subject 05*
-
-*Notice: sub1/3/7 have very low confidence.*
-
-```{r}
-prescan_batch = prescan_batch %>% filter(sub != '05')#  & sub != '03'& sub != '01')
-scan_batch = scan_batch %>% filter(sub != '05')# & sub != '03' & sub != '01')
-postscan_batch = postscan_batch %>% filter(sub != '05')# & sub != '03' & sub != '01')
-```
-
-
-# Prescan analysis
-
-Participant were instructed to answer the expected destination for 3 times during the route: once at Same, once at Overlapping, and once at non-overlapping. They also indicated their confidence towards the choice (sure vs. unsure).
 
 ```{r}
 prescan_batch = prescan_batch %>% 
@@ -111,8 +95,28 @@ sub_plot %>% group_by(sub) %>%
   fmt_number(
     columns = starts_with('co'),
     decimals = 3)%>%
-  tab_header(title = "Prescan Performance") 
+  tab_header(title = "Prescan Performance")
+```
 
+*Excluding subject 05. Should we exclude sub 08?*
+
+*Notice: sub1/3/7 have very low confidence.*
+
+
+```{r}
+prescan_batch = prescan_batch %>% filter(sub != '05')#  & sub != '03'& sub != '01')
+scan_batch = scan_batch %>% filter(sub != '05')# & sub != '03' & sub != '01')
+postscan_batch = postscan_batch %>% filter(sub != '05')# & sub != '03' & sub != '01')
+```
+
+
+# Prescan analysis
+
+Participant were instructed to answer the expected destination for 3 times during the route: once at Same, once at Overlapping, and once at non-overlapping. They also indicated their confidence towards the choice (sure vs. unsure).
+
+### Figures
+
+```{r}
 curr_plot = sub_plot %>%
   group_by(round_text, nquestion) %>% 
   summarise(mean = mean(m),
@@ -144,6 +148,54 @@ ggplot(curr_plot, aes(x = nquestion, y = mean_cor_conf)) +
 
 sub_plot$round_text = factor(sub_plot$round_text)
 ```
+
+```{r}
+
+route_df <- data.frame(route=rep(c('pair1_east', 
+                             'pair2_north', 
+                             'pair3_west', 
+                             'pair4_south'), each=2),
+                 destination=c('bench', 'bikerack', 
+                               'pole', 'window', 
+                               'bush', 'pergola', 
+                               'entrance', 'map'),
+                 competitor=c('bikerack','bench',
+                               'window', 'pole', 
+                               'pergola', 'bush', 
+                               'map', 'entrance'))
+
+prescan_batch_competitor = prescan_batch %>% 
+  inner_join(route_df, by = c('route', 'destination')) %>% 
+  mutate(type = ifelse(resp_obj == destination, 'target',
+                       ifelse(resp_obj == competitor, 'competitor',
+                              'non-competitor')
+                       ))
+
+prescan_batch_competitor %>% 
+  mutate(sub = as.factor(sub),
+         nquestion = as.factor(nquestion),
+         round = as.factor(round),
+         type = as.factor(type)) %>% 
+  count(sub, nquestion, round, type, .drop=FALSE) %>% 
+  mutate(percentage = n / 4) %>% 
+  group_by(nquestion, round, type) %>% 
+  summarise(m = mean(percentage),
+            se = sd(percentage)/sqrt(n()),
+            n = n()) %>% 
+  mutate(round_text = paste0('Round',round)) %>% 
+  ggplot(aes(x = nquestion, y = m, fill = type)) + 
+  geom_histogram(stat = "identity", position = 'dodge')+
+  geom_errorbar(aes(ymin=m-se, ymax=m+se), color="black", width=0.1, size=0.5,
+                position = position_dodge(0.9))+
+  facet_wrap(~round_text)+
+  theme(legend.position = 'bottom')+
+  labs(title = 'Correct for pre-scan,\nspearated by answer type',
+       y = 'percentage')+
+  colorblindr::scale_fill_OkabeIto()
+  
+```
+
+### Stats
 
 ANVOA for Accuracy:
 
@@ -227,53 +279,6 @@ t.test(sub_plot %>% filter(round == 1 & nquestion == 3) %>% .$cor_conf,
 ```
 
 
-```{r}
-
-route_df <- data.frame(route=rep(c('pair1_east', 
-                             'pair2_north', 
-                             'pair3_west', 
-                             'pair4_south'), each=2),
-                 destination=c('bench', 'bikerack', 
-                               'pole', 'window', 
-                               'bush', 'pergola', 
-                               'entrance', 'map'),
-                 competitor=c('bikerack','bench',
-                               'window', 'pole', 
-                               'pergola', 'bush', 
-                               'map', 'entrance'))
-
-prescan_batch_competitor = prescan_batch %>% 
-  inner_join(route_df, by = c('route', 'destination')) %>% 
-  mutate(type = ifelse(resp_obj == destination, 'target',
-                       ifelse(resp_obj == competitor, 'competitor',
-                              'non-competitor')
-                       ))
-
-prescan_batch_competitor %>% 
-  mutate(sub = as.factor(sub),
-         nquestion = as.factor(nquestion),
-         round = as.factor(round),
-         type = as.factor(type)) %>% 
-  count(sub, nquestion, round, type, .drop=FALSE) %>% 
-  mutate(percentage = n / 4) %>% 
-  group_by(nquestion, round, type) %>% 
-  summarise(m = mean(percentage),
-            se = sd(percentage)/sqrt(n()),
-            n = n()) %>% 
-  mutate(round_text = paste0('Round',round)) %>% 
-  ggplot(aes(x = nquestion, y = m, fill = type)) + 
-  geom_histogram(stat = "identity", position = 'dodge')+
-  geom_errorbar(aes(ymin=m-se, ymax=m+se), color="black", width=0.1, size=0.5,
-                position = position_dodge(0.9))+
-  facet_wrap(~round_text)+
-  theme(legend.position = 'bottom')+
-  labs(title = 'Correct for pre-scan,\nspearated by answer type',
-       y = 'percentage')+
-  colorblindr::scale_fill_OkabeIto()
-  
-```
-
-
 # Scan analysis
 
 Accuracy per round:
@@ -307,6 +312,7 @@ ggplot(curr_plot, aes(x = round, y = accuracy, color = type)) +
   geom_line(size = 1)+
   geom_errorbar(aes(ymin=accuracy-se, ymax=ifelse(accuracy+se>1, 1, accuracy+se)), width=0.1, size=0.5)+
   theme(legend.position = 'bottom')+
+  labs('')+
   colorblindr::scale_color_OkabeIto()
 ```
 
