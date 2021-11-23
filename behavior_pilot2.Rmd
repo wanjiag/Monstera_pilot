@@ -30,7 +30,8 @@ converting_read <- function(curr_path){
 
 converting_read2 <- function(curr_path){
   print(curr_path)
-  read_csv(curr_path) %>% mutate(sub = as.character(sub))
+  read_csv(curr_path) %>% mutate(sub = as.character(sub),
+                                 resp_obj = as.character(resp_obj))
 }
 
 # Loading behavioral data
@@ -40,7 +41,7 @@ scan_behav <- map(sub_dir, dir_ls, regexp = '(.*)_scan(\\d?\\d)_behav_.*') %>% u
 postscan_behav <- map(sub_dir, dir_ls, glob = '*postscan*_behav*.csv') %>% unlist()
 
 prescan_batch <- map_dfr(prescan_behav, converting_read)
-scan_batch <- map_dfr(scan_behav, converting_read)
+scan_batch <- map_dfr(scan_behav, converting_read2)
 postscan_batch <- map_dfr(postscan_behav, converting_read)
 ```
 
@@ -58,14 +59,7 @@ scan_batch = scan_batch %>%
                        conf_resp== 6), 1, 0))
 ```
 
-```{r}
-scan_batch %>% group_by(sub) %>% summarise(
-  correct = mean(correct),
-  conf = mean(confidence),
-  conf_correct = mean(cor_conf)
-) %>% gt()%>%
-  tab_header(title = "Scan Performance") 
-```
+### prescan
 
 ```{r}
 prescan_batch = prescan_batch %>% 
@@ -98,15 +92,42 @@ sub_plot %>% group_by(sub) %>%
   tab_header(title = "Prescan Performance")
 ```
 
-*Excluding subject 05, 08, and 14. Should we exclude sub 08?*
+### scan
+
+```{r}
+scan_batch %>% group_by(sub) %>% summarise(
+  correct = mean(correct),
+  conf = mean(confidence),
+  conf_correct = mean(cor_conf)
+) %>% gt()%>%
+  tab_header(title = "Scan Performance") 
+```
+
+### postscan
+
+```{r}
+postscan_batch = postscan_batch %>% 
+  mutate(
+  correct = ifelse(post_first_resp_obj == destination, 1, 0))
+
+postscan_batch %>% group_by(sub) %>% 
+  summarise(m = mean(correct)) %>% 
+  gt() %>%
+  tab_header(
+    title = "Mean accuracy per subject"
+  )
+```
+
+
+*Excluding subject 05, 08, 14, 15, and 16. Should we exclude sub 08?*
 
 *Notice: sub1/3/7 have very low confidence.*
 
 
 ```{r}
-prescan_batch = prescan_batch %>% filter(sub != '05' & sub != '14' & sub != '08')
-scan_batch = scan_batch %>% filter(sub != '05' & sub != '14' & sub != '08')
-postscan_batch = postscan_batch %>% filter(sub != '05' & sub != '14' & sub != '08')
+prescan_batch = prescan_batch %>% filter(sub != '05' & sub != '14' & sub != '15' & sub != '16')
+scan_batch = scan_batch %>% filter(sub != '05' & sub != '14' & sub != '15' & sub != '16')
+postscan_batch = postscan_batch %>% filter(sub != '05' & sub != '14' & sub != '15' & sub != '16')
 ```
 
 
@@ -397,17 +418,6 @@ ggplot(curr_plot, aes(x = npic, y = m_conf_correct)) +
 # Postscan analysis
 
 ```{r}
-postscan_batch = postscan_batch %>% 
-  mutate(
-  correct = ifelse(post_first_resp_obj == destination, 1, 0))
-
-postscan_batch %>% group_by(sub) %>% 
-  summarise(m = mean(correct)) %>% 
-  gt() %>%
-  tab_header(
-    title = "Mean accuracy per subject"
-  )
-
 avg = postscan_batch %>% group_by(sub) %>% 
   summarise(m = mean(correct)) %>% 
   summarise(m = mean(m)) %>% .$m
