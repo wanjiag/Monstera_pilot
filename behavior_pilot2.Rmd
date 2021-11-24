@@ -89,7 +89,39 @@ sub_plot %>% group_by(sub) %>%
   fmt_number(
     columns = starts_with('co'),
     decimals = 3)%>%
-  tab_header(title = "Prescan Performance")
+  tab_header(title = "Prescan Performance") %>% 
+  tab_style(
+    style = list(
+      cell_fill(color = "#F9E3D6"),
+      cell_text(weight = "bold")
+      ),
+    locations = cells_body(
+      columns = vars(correct),
+      rows = correct < 0.5
+    )
+  ) %>%
+  tab_footnote(
+    footnote = "accuracy < 0.5 are highlighted",
+    locations = cells_column_labels(
+      columns = vars(correct)
+    )
+  ) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "#F9E3D6"),
+      cell_text(weight = "bold")
+      ),
+    locations = cells_body(
+      columns = vars(conf_correct),
+      rows = conf_correct < 0.25
+    )
+  ) %>%
+  tab_footnote(
+    footnote = "confidence correct < 0.25 are highlighted",
+    locations = cells_column_labels(
+      columns = vars(conf_correct)
+    )
+  )
 ```
 
 ### scan
@@ -99,8 +131,40 @@ scan_batch %>% group_by(sub) %>% summarise(
   correct = mean(correct),
   conf = mean(confidence),
   conf_correct = mean(cor_conf)
-) %>% gt()%>%
-  tab_header(title = "Scan Performance") 
+) %>% gt() %>% 
+  tab_header(title = "Scan Performance") %>% 
+  tab_style(
+    style = list(
+      cell_fill(color = "#F9E3D6"),
+      cell_text(weight = "bold")
+      ),
+    locations = cells_body(
+      columns = vars(correct),
+      rows = correct < 0.5
+    )
+  )%>%
+  tab_footnote(
+    footnote = "accuracy < 0.5 are highlighted",
+    locations = cells_column_labels(
+      columns = vars(correct)
+    )
+  )%>%
+  tab_style(
+    style = list(
+      cell_fill(color = "#F9E3D6"),
+      cell_text(weight = "bold")
+      ),
+    locations = cells_body(
+      columns = vars(conf_correct),
+      rows = conf_correct < 0.25
+    )
+  ) %>%
+  tab_footnote(
+    footnote = "confidence correct < 0.25 are highlighted",
+    locations = cells_column_labels(
+      columns = vars(conf_correct)
+    )
+  )
 ```
 
 ### postscan
@@ -115,11 +179,27 @@ postscan_batch %>% group_by(sub) %>%
   gt() %>%
   tab_header(
     title = "Mean accuracy per subject"
+  )%>% 
+  tab_style(
+    style = list(
+      cell_fill(color = "#F9E3D6"),
+      cell_text(weight = "bold")
+      ),
+    locations = cells_body(
+      columns = vars(m),
+      rows = m < 0.5
+    )
+  )%>%
+  tab_footnote(
+    footnote = "accuracy < 0.5 are highlighted",
+    locations = cells_column_labels(
+      columns = vars(m)
+    )
   )
 ```
 
 
-*Excluding subject 05, 08, 14, 15, and 16. Should we exclude sub 08?*
+*Excluding subject 05, 14, 15, and 16. Should we exclude sub 08?*
 
 *Notice: sub1/3/7 have very low confidence.*
 
