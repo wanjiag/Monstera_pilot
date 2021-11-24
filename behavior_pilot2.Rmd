@@ -199,15 +199,15 @@ postscan_batch %>% group_by(sub) %>%
 ```
 
 
-*Excluding subject 05, 14, 15, and 16. Should we exclude sub 08?*
+*Excluding subject 05, 15, and 16. Should we exclude sub 08 and 14?*
 
 *Notice: sub1/3/7 have very low confidence.*
 
 
 ```{r}
-prescan_batch = prescan_batch %>% filter(sub != '05' & sub != '14' & sub != '15' & sub != '16')
-scan_batch = scan_batch %>% filter(sub != '05' & sub != '14' & sub != '15' & sub != '16')
-postscan_batch = postscan_batch %>% filter(sub != '05' & sub != '14' & sub != '15' & sub != '16')
+prescan_batch = prescan_batch %>% filter(sub != '05' & sub != '15' & sub != '16')
+scan_batch = scan_batch %>% filter(sub != '05'  & sub != '15' & sub != '16')
+postscan_batch = postscan_batch %>% filter(sub != '05' & sub != '15' & sub != '16')
 ```
 
 
