@@ -199,7 +199,7 @@ postscan_batch %>% group_by(sub) %>%
 ```
 
 
-*Excluding subject 05, 15, and 16. Should we exclude sub 08 and 14?*
+*Excluding subject 05, 15, and 16. Should we exclude sub 08, 14 and 23?*
 
 *Notice: sub1/3/7 have very low confidence.*
 
@@ -521,7 +521,7 @@ postscan_batch %>%
 
 ```{r}
 postscan_batch %>% 
-  filter(correct == 0) %>%
+  filter(correct == 0 & resp != -999) %>%
   mutate(route = factor(route, levels = c('pair1_east','pair3_west','pair2_north','pair4_south')),
          destination = factor(destination, levels = c('bench','bikerack','bush','pergola','pole','window','entrance','map'))) %>% 
   ggplot(aes(x = npic, fill = sub)) +
