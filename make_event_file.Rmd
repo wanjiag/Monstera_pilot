@@ -1,0 +1,87 @@
+---
+title: "Make_event_files"
+author: "Wanjia Guo"
+date: "1/11/2022"
+output: html_document
+---
+
+```{r include = FALSE}
+library(tidyverse)
+library(fs)
+theme_set(theme_minimal(15))
+```
+
+```{r setup, include=FALSE}
+
+converting_read2 <- function(curr_path){
+  print(curr_path)
+  read_csv(curr_path) %>% mutate(sub = as.character(sub))
+}
+
+# Loading behavioral data
+sub_dir = dir_ls(here::here("../study_design/behavioral_code/Monstera_fMRI_testing/scanner_data/"),  type = "directory")
+scan_timing <- map(sub_dir, dir_ls, regexp = '(.*)_scan(\\d?\\d)_timing_.*') %>% unlist()
+
+scan_batch <- map_dfr(scan_timing, converting_read2)
+```
+
+```{r}
+
+scanner_id = c('MONSTERA00', 'MONSTERA01')
+id = c('01', '03')
+
+id_ref_df = data_frame(scanner_id, id)
+
+scanner_round = c('6','7','8')
+behav_round = c(1,2,3)
+id = '01'
+first_session_run_ref = data_frame(scanner_round, behav_round, id)
+
+scanner_round = c('7','8','9','10')
+behav_round = c(1,2,3,4)
+id = '03'
+second_session_run_ref = data_frame(scanner_round, behav_round, id)
+
+ref_df = full_join(id_ref_df, bind_rows(first_session_run_ref,second_session_run_ref))
+```
+
+```{r}
+event_files = scan_batch %>% 
+  filter(sub != '03' | round != 5) %>% 
+  separate(npic, 
+           into ='n_pic', 
+           sep = '_', 
+           extra = 'drop', 
+           remove = FALSE) %>% 
+    separate(condition, 
+           into =c('pair', 'route'), 
+           sep = '/', 
+           extra = 'drop', 
+           remove = FALSE) %>% 
+  mutate(pair = str_sub(pair, start = 3),
+         route = stringr::str_extract(route, "[a-z]+")) %>%
+  mutate(start_end = ifelse(n_pic == 1, 'start',
+                            ifelse(
+                              n_pic == 'img buffer' | 
+                                n_pic == 'destination', 
+                              'end', NA
+                                   ))) %>% 
+  filter(!is.na(start_end)) %>% 
+  select(design_onset, start_end, sub, round, trial, pair, route) %>%
+  pivot_wider(names_from = start_end, values_from = design_onset) %>% 
+  mutate(duration = end - start, onset = start) %>% 
+  select(-c(start, end, pair))
+
+event_files = event_files %>% 
+  full_join(ref_df, by = c("sub" = "id",
+                           "round" = "behav_round")) %>% 
+  select(-c(sub, round))
+
+event_files$onset <- format(event_files$onset, digits = 0)  
+event_files$duration <- format(event_files$duration, digits = 3)  
+
+event_files %>% 
+  group_by(scanner_id, scanner_round) %>% 
+  group_walk(~write_csv(.x, paste0('./event_files/sub-', .y$scanner_id, '_task-route_run-', .y$scanner_round, '_events.tsv')))
+
+```

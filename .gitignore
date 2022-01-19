@@ -1,3 +1,7 @@
+Data
+event_files/
+fmri_voxels/
+
 # History files
 .Rhistory
 .Rapp.history

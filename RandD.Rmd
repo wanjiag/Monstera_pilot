@@ -1,0 +1,116 @@
+---
+title: "R&D session"
+author: "Wanjia Guo"
+date: "1/18/2022"
+output: html_document
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(echo=FALSE, warning = FALSE)
+library(gt)
+library(fs)
+library(purrr)
+library(tidyverse)
+theme_set(theme_minimal(15))
+```
+
+
+```{r setup, include=FALSE}
+
+converting_read <- function(curr_path){
+  print(curr_path)
+  read_csv(curr_path)
+}
+
+# Loading event file
+sub_dir = dir_ls(here::here("event_files/"))
+event_df <- map_dfr(sub_dir, converting_read, .id = "iteration")
+
+event_df = event_df %>% mutate(
+      sub = str_replace_all(
+        iteration, 
+        "^.*sub-MONSTERA(\\d?\\d).+", 
+        "\\1"
+    ),
+    run = str_replace_all(
+        iteration, 
+        "^.*_run-(\\d?\\d)_events.tsv", 
+        "\\1"
+    )
+  )
+
+# Loading fMRI data
+sub_dir = dir_ls(here::here("fmri_voxels/"))
+df <- map(sub_dir, dir_ls, glob = '*.csv') %>% unlist()
+
+batch_df <- map_dfr(df, converting_read, .id = "iteration")
+  
+batch_df = batch_df %>% mutate(
+      sub = str_replace_all(
+        iteration, 
+        "^.*sub-MONSTERA(\\d?\\d).+", 
+        "\\1"
+    ),
+    run = str_replace_all(
+        iteration, 
+        "^.*run-(\\d?\\d).csv", 
+        "\\1"
+    )
+  )
+```
+
+```{r}
+event_df = event_df %>% select(-iteration)
+batch_df= batch_df %>% select(-iteration)
+```
+
+### sub00:
+
+6: 1 partial fourier, 4 multiband accelerator
+
+7: 1 partial fourier, 3 multiband accelerator
+
+8: 0.875 partial fourier, 6 multiband accelerator (Similar to Aitken & Kok).
+
+### sub01:
+
+7: partial Fourier of 6/8 with a TE of 33ms.
+
+8: 6/8 partial Fourier with a shorter TE of 27ms (might be better). Longer rise time. 
+
+9: also 27 TE. Different from the previous one with a shorter rise time.
+
+10: same as the run 8 of sub00 but with more slices (60 now, 45 before). partial Fourier of 7/8 with a slightly longer TE of 36ms.
+
+
+## Mean and SD of activity for each round for all voxels in PPA.
+```{r}
+
+batch_df_long = batch_df %>% 
+  pivot_longer(!c(sub, run), names_to = 'trial', values_to = 'activity')
+  
+df_plot = batch_df_long %>% group_by(sub, run) %>% 
+  summarise(m = mean(activity),
+            sd = sd(activity)) %>% 
+  mutate(run = as.numeric(run))
+
+ggplot(df_plot, aes(x = run, y = m)) + geom_bar(stat = 'identity') + 
+  #geom_errorbar(aes(ymin=m-sd, ymax=m+sd), width=0.1, size=0.5)+
+  facet_wrap(~sub) + 
+  labs(title = "Mean activity for all voxels in PPA.",
+    caption = "Error bar = standard deviation.")
+
+ggplot(df_plot, aes(x = run, y = sd)) + geom_bar(stat = 'identity') + 
+  #geom_errorbar(aes(ymin=m-sd, ymax=m+sd), width=0.1, size=0.5)+
+  facet_wrap(~sub) + 
+  labs(title = "Mean SD for all voxels in PPA.",
+    caption = "Error bar = standard deviation.")
+
+```
+
+```{r}
+
+
+
+```
+
