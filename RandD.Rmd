@@ -76,7 +76,7 @@ batch_df= batch_df %>% select(-iteration)
 
 7: partial Fourier of 6/8 with a TE of 33ms.
 
-8: 6/8 partial Fourier with a shorter TE of 27ms (might be better). Longer rise time. 
+8: 6/8 partial Fourier with a shorter TE of 27ms (Jolinda suggested this might be better). Longer rise time. 
 
 9: also 27 TE. Different from the previous one with a shorter rise time.
 
@@ -84,15 +84,21 @@ batch_df= batch_df %>% select(-iteration)
 
 
 ## Mean and SD of activity for each round for all voxels in PPA.
+
+Both mean and SD are calculated for each trial first, then take mean within each scan session.
+
 ```{r}
 
 batch_df_long = batch_df %>% 
   pivot_longer(!c(sub, run), names_to = 'trial', values_to = 'activity')
   
-df_plot = batch_df_long %>% group_by(sub, run) %>% 
-  summarise(m = mean(activity),
-            sd = sd(activity)) %>% 
-  mutate(run = as.numeric(run))
+df_plot = batch_df_long %>% group_by(sub, run, trial) %>% 
+  summarise(tmp_m = mean(activity),
+            tmp_sd = sd(activity)) %>% 
+  mutate(run = as.numeric(run)) %>% 
+  group_by(sub, run) %>% 
+  summarise(m = mean(tmp_m),
+            sd = mean(tmp_sd))
 
 ggplot(df_plot, aes(x = run, y = m)) + geom_bar(stat = 'identity') + 
   #geom_errorbar(aes(ymin=m-sd, ymax=m+sd), width=0.1, size=0.5)+
