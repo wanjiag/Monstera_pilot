@@ -85,6 +85,8 @@ batch_df= batch_df %>% select(-iteration)
 
 ## Mean and SD of activity for each round for all voxels in PPA.
 
+### Including catch trials
+
 Both mean and SD are calculated for each trial first, then take mean within each scan session.
 
 ```{r}
@@ -114,9 +116,34 @@ ggplot(df_plot, aes(x = run, y = sd)) + geom_bar(stat = 'identity') +
 
 ```
 
+### Remove catch trials
+
 ```{r}
 
+total_df = full_join(batch_df_long %>% 
+            mutate(trial = as.numeric(trial)), 
+          event_df)
 
+remove_catch_df = total_df %>% filter(duration == 24)
 
+df_plot = remove_catch_df %>% group_by(sub, run, trial) %>% 
+  summarise(tmp_m = mean(activity),
+            tmp_sd = sd(activity)) %>% 
+  mutate(run = as.numeric(run)) %>% 
+  group_by(sub, run) %>% 
+  summarise(m = mean(tmp_m),
+            sd = mean(tmp_sd))
+
+ggplot(df_plot, aes(x = run, y = m)) + geom_bar(stat = 'identity') + 
+  #geom_errorbar(aes(ymin=m-sd, ymax=m+sd), width=0.1, size=0.5)+
+  facet_wrap(~sub) + 
+  labs(title = "Mean activity for all voxels in PPA.",
+    caption = "Error bar = standard deviation.")
+
+ggplot(df_plot, aes(x = run, y = sd)) + geom_bar(stat = 'identity') + 
+  #geom_errorbar(aes(ymin=m-sd, ymax=m+sd), width=0.1, size=0.5)+
+  facet_wrap(~sub) + 
+  labs(title = "Mean SD for all voxels in PPA.",
+    caption = "Error bar = standard deviation.")
 ```
 
