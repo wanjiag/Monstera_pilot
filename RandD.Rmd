@@ -105,14 +105,12 @@ df_plot = batch_df_long %>% group_by(sub, run, trial) %>%
 ggplot(df_plot, aes(x = run, y = m)) + geom_bar(stat = 'identity') + 
   #geom_errorbar(aes(ymin=m-sd, ymax=m+sd), width=0.1, size=0.5)+
   facet_wrap(~sub) + 
-  labs(title = "Mean activity for all voxels in PPA.",
-    caption = "Error bar = standard deviation.")
+  labs(title = "Mean activity for all voxels in PPA.")
 
 ggplot(df_plot, aes(x = run, y = sd)) + geom_bar(stat = 'identity') + 
   #geom_errorbar(aes(ymin=m-sd, ymax=m+sd), width=0.1, size=0.5)+
   facet_wrap(~sub) + 
-  labs(title = "Mean SD for all voxels in PPA.",
-    caption = "Error bar = standard deviation.")
+  labs(title = "Mean SD for all voxels in PPA.")
 
 ```
 
@@ -137,13 +135,11 @@ df_plot = remove_catch_df %>% group_by(sub, run, trial) %>%
 ggplot(df_plot, aes(x = run, y = m)) + geom_bar(stat = 'identity') + 
   #geom_errorbar(aes(ymin=m-sd, ymax=m+sd), width=0.1, size=0.5)+
   facet_wrap(~sub) + 
-  labs(title = "Mean activity for all voxels in PPA.",
-    caption = "Error bar = standard deviation.")
+  labs(title = "Mean activity for all voxels in PPA.")
 
 ggplot(df_plot, aes(x = run, y = sd)) + geom_bar(stat = 'identity') + 
   #geom_errorbar(aes(ymin=m-sd, ymax=m+sd), width=0.1, size=0.5)+
   facet_wrap(~sub) + 
-  labs(title = "Mean SD for all voxels in PPA.",
-    caption = "Error bar = standard deviation.")
+  labs(title = "Mean SD for all voxels in PPA.")
 ```
 
